@@ -1,0 +1,20 @@
+# Base de données — jamais versionnée (données personnelles)
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# Environnement Python
+venv/
+__pycache__/
+*.pyc
+
+# Dossiers de données personnelles (documents joints, sauvegardes de la base)
+/documents/
+/sauvegardes/
+
+# Exports Excel (données personnelles, régénérables depuis la base)
+*.xlsx
+
+# Fichiers macOS
+.DS_Store
