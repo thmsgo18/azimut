@@ -103,6 +103,21 @@ modifier_candidature(id, **champs)         # changement de statut → événemen
 supprimer_candidature(id)                  # supprime aussi journal + documents liés
 lister_candidatures(statut=None, sous_domaine=None, priorite=None)
 recuperer_candidature(id)
+marquer_relance(id) -> dict                # +1 relance, statut→Relancée si besoin, date effacée
+lister_relances_a_faire() -> [dict, ...]   # en retard puis prévues aujourd'hui, triées par urgence
+enregistrer_etat_lien(id, etat)            # "actif"/"mort"/"inconnu" — usage interne (voir ci-dessous)
+
+# verification_liens.py — ping HTTP conservateur des liens d'offres (jamais de faux positif)
+verifier_lien(url) -> (etat, code_http)              # "actif" / "mort" (404/410 seulement) / "inconnu"
+verifier_tous_les_liens(forcer=False) -> résumé       # saute les liens vérifiés il y a <24h sauf forcer=True
+etat_liens() -> résumé                                # lecture seule, ne relance aucune requête
+
+# rapide.py — brouillon depuis un lien/texte externe (Raccourci macOS, etc.)
+creer_brouillon(lien=None, texte=None) -> {id, entreprise, poste}   # statut "À préparer", jamais définitif
+
+# rappels_macos.py — pousse une échéance dans l'app Rappels (osascript, macOS uniquement)
+creer_rappel(titre, notes, date_echeance_iso, liste="Azimut")
+pousser_echeance(echeance) / pousser_toutes_les_echeances() -> résumé (best effort)
 
 # contacts.py
 verifier_doublon_contact(entreprise_nom, nom_contact) -> id | None

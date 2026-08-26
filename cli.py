@@ -190,6 +190,13 @@ def construire_analyseur():
     voir = actions.add_parser("voir", help="Afficher le détail d'une candidature")
     voir.add_argument("id", type=int, help="Numéro de la candidature")
 
+    relancer = actions.add_parser(
+        "relancer", help="Marquer une relance faite (incrémente et efface la date prévue)"
+    )
+    relancer.add_argument("id", type=int, help="Numéro de la candidature")
+
+    actions.add_parser("relances", help="Lister les relances à faire aujourd'hui ou en retard")
+
     # --- entreprises ---
     ent = sections.add_parser("entreprises", help="Gérer les entreprises")
     actions = ent.add_subparsers(dest="action", required=True, metavar="action")
@@ -336,6 +343,23 @@ def executer(args):
             for libelle, valeur in libelles:
                 if valeur not in (None, ""):
                     print(f"  {libelle} : {valeur}")
+        elif args.action == "relancer":
+            cand = candidatures.marquer_relance(args.id, chemin_db=chemin_db)
+            print(f"✓ Relance n°{cand['nb_relances']} enregistrée pour la candidature n°{args.id} "
+                  f"({cand['entreprise']} — {cand['poste']}), statut : {cand['statut']}.")
+        elif args.action == "relances":
+            liste = candidatures.lister_relances_a_faire(chemin_db=chemin_db)
+            if not liste:
+                print("Aucune relance à faire aujourd'hui.")
+                return
+            _afficher_table(
+                [("N°", 5), ("Entreprise", 22), ("Poste", 32), ("Prévue le", 10), ("Priorité", 9)],
+                [
+                    (c["id"], c["entreprise"], c["poste"], _date_fr(c["date_relance_prevue"]), c["priorite"])
+                    for c in liste
+                ],
+            )
+            print(f"\n{len(liste)} relance(s) à faire.")
 
     elif args.section == "entreprises":
         if args.action == "ajouter":

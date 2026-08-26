@@ -99,6 +99,21 @@ class ApiBureau:
         return reglages.definir_dossier_donnees(resultat[0])
 
 
+def _verification_liens_en_arriere_plan():
+    """Vérifie périodiquement les liens d'offres tant qu'Azimut est ouvert
+    (toutes les 6h) — best effort : une erreur réseau ne doit jamais faire
+    planter l'appli, elle est simplement ignorée jusqu'au prochain passage."""
+    import verification_liens
+
+    time.sleep(30)  # laisse l'appli finir de démarrer avant le premier passage
+    while True:
+        try:
+            verification_liens.verifier_tous_les_liens()
+        except Exception:
+            pass
+        time.sleep(6 * 3600)
+
+
 def _proposer_dossier_au_premier_lancement():
     """Demande une seule fois, au tout premier lancement, où ranger les
     documents et sauvegardes. Un refus (ou un lancement suivant) n'insiste
@@ -130,6 +145,7 @@ def principal():
     )
     serveur_thread.start()
     _attendre_serveur(url)
+    threading.Thread(target=_verification_liens_en_arriere_plan, daemon=True).start()
 
     _habiller_application_macos()
     # Autorise les téléchargements (export Excel, fiche .md) depuis la fenêtre.

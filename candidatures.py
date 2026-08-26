@@ -141,6 +141,44 @@ def modifier_candidature(id_candidature, chemin_db=None, **champs):
         conn.close()
 
 
+def marquer_relance(id_candidature, chemin_db=None):
+    """Enregistre qu'une relance vient d'être faite, en un geste :
+    incrémente nb_relances, passe le statut à « Relancée » s'il était
+    « Envoyée », et efface la date de relance prévue (une prochaine se
+    planifie en modifiant la candidature). Journalisé comme toute
+    modification (voir _journaliser_modifications)."""
+    cand = recuperer_candidature(id_candidature, chemin_db=chemin_db)
+    champs = {
+        "nb_relances": (cand["nb_relances"] or 0) + 1,
+        "date_relance_prevue": None,
+    }
+    if cand["statut"] == "Envoyée":
+        champs["statut"] = "Relancée"
+    modifier_candidature(id_candidature, chemin_db=chemin_db, **champs)
+    return recuperer_candidature(id_candidature, chemin_db=chemin_db)
+
+
+STATUTS_RELANCABLES = ("Envoyée", "Relancée")
+
+
+def lister_relances_a_faire(chemin_db=None):
+    """Candidatures dont la relance est prévue aujourd'hui ou avant, triées
+    par urgence : les plus en retard d'abord, puis par priorité."""
+    from datetime import date
+
+    aujourd_hui = date.today().isoformat()
+    poids_priorite = {"Haute": 0, "Moyenne": 1, "Basse": 2}
+    liste = [
+        c
+        for c in lister_candidatures(chemin_db=chemin_db)
+        if c["date_relance_prevue"]
+        and c["date_relance_prevue"] <= aujourd_hui
+        and c["statut"] in STATUTS_RELANCABLES
+    ]
+    liste.sort(key=lambda c: (c["date_relance_prevue"], poids_priorite.get(c["priorite"], 1)))
+    return liste
+
+
 def lister_candidatures(statut=None, sous_domaine=None, priorite=None, chemin_db=None):
     """Retourne les candidatures (liste de dicts, avec le nom d'entreprise),
     filtrées par statut / sous-domaine / priorité si fournis."""
@@ -204,5 +242,26 @@ def recuperer_candidature(id_candidature, chemin_db=None):
         if ligne is None:
             raise EntiteIntrouvable(f"Aucune candidature avec l'id {id_candidature}.")
         return dict(ligne)
+    finally:
+        conn.close()
+
+
+def enregistrer_etat_lien(id_candidature, etat, chemin_db=None):
+    """Enregistre le résultat d'une vérification de lien d'offre (colonnes
+    internes gérées par verification_liens.py, jamais via modifier_candidature) :
+    etat vaut "actif", "mort" ou "inconnu", horodaté à l'instant présent."""
+    from datetime import datetime
+
+    conn = db.ouvrir(chemin_db)
+    try:
+        if conn.execute(
+            "SELECT id FROM candidatures WHERE id = ?", (id_candidature,)
+        ).fetchone() is None:
+            raise EntiteIntrouvable(f"Aucune candidature avec l'id {id_candidature}.")
+        conn.execute(
+            "UPDATE candidatures SET lien_dernier_etat = ?, lien_dernier_controle = ? WHERE id = ?",
+            (etat, datetime.now().isoformat(timespec="seconds"), id_candidature),
+        )
+        conn.commit()
     finally:
         conn.close()

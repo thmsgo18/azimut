@@ -26,10 +26,12 @@ import entretien
 import evenements
 import export_excel
 import import_excel
+import rapide
 import recherche
 import reglages
 import sauvegarde
 import statistiques
+import verification_liens
 from exceptions import EntiteIntrouvable, ErreurSuivi, ValeurNonAutorisee
 from valeurs import (
     CONVENTIONS,
@@ -161,6 +163,18 @@ def api_candidatures_modifier(numero):
 def api_candidatures_supprimer(numero):
     candidatures.supprimer_candidature(numero)
     return jsonify({"message": f"Candidature n°{numero} supprimée."})
+
+
+@app.route("/api/candidatures/<int:numero>/relancer", methods=["POST"])
+def api_candidatures_relancer(numero):
+    return jsonify(candidatures.marquer_relance(numero))
+
+
+@app.route("/api/relances")
+def api_relances():
+    """Liste complète (non plafonnée) des relances à faire, triée par
+    urgence — utilisée par la vue dédiée « Relances »."""
+    return jsonify(candidatures.lister_relances_a_faire())
 
 
 @app.route("/api/candidatures/similaires")
@@ -297,16 +311,7 @@ def api_stats():
         (c for c in liste if c["date_entretien"] and c["date_entretien"] >= aujourd_hui),
         key=lambda c: c["date_entretien"],
     )
-    relances_a_faire = sorted(
-        (
-            c
-            for c in liste
-            if c["date_relance_prevue"]
-            and c["date_relance_prevue"] <= aujourd_hui
-            and c["statut"] in ("Envoyée", "Relancée")
-        ),
-        key=lambda c: c["date_relance_prevue"],
-    )
+    relances_a_faire = candidatures.lister_relances_a_faire()
     return jsonify(
         {
             "total": len(liste),
@@ -463,6 +468,27 @@ def api_stats_avancees():
     return jsonify(statistiques.stats_avancees())
 
 
+# --- liens d'offres (détection des offres retirées) ---
+
+@app.route("/api/liens/etat")
+def api_liens_etat():
+    return jsonify(verification_liens.etat_liens())
+
+
+@app.route("/api/liens/verifier", methods=["POST"])
+def api_liens_verifier():
+    donnees = request.get_json(silent=True) or {}
+    return jsonify(verification_liens.verifier_tous_les_liens(forcer=bool(donnees.get("forcer"))))
+
+
+# --- capture rapide (Raccourci macOS depuis Safari) ---
+
+@app.route("/api/rapide/offre", methods=["POST"])
+def api_rapide_offre():
+    donnees = request.get_json(silent=True) or {}
+    return jsonify(rapide.creer_brouillon(donnees.get("lien"), donnees.get("texte"))), 201
+
+
 @app.route("/api/agenda")
 def api_agenda():
     return jsonify(agenda.lister_echeances())
@@ -486,6 +512,27 @@ def api_agenda_abonnement():
     qu'une appli de calendrier (webcal://) rappelle périodiquement pour se
     tenir à jour tant qu'Azimut tourne."""
     return Response(agenda.generer_ics(), mimetype="text/calendar")
+
+
+@app.route("/api/rappels/echeance", methods=["POST"])
+def api_rappels_echeance():
+    """Pousse une échéance précise vers l'app Rappels (macOS)."""
+    import rappels_macos
+
+    echeance = request.get_json(silent=True) or {}
+    for champ in ("date", "libelle", "entreprise", "poste"):
+        if not echeance.get(champ) and champ != "poste":
+            raise ValeurNonAutorisee(f"Champ manquant pour créer le rappel : {champ}.")
+    rappels_macos.pousser_echeance(echeance)
+    return jsonify({"ok": True})
+
+
+@app.route("/api/rappels/tout_pousser", methods=["POST"])
+def api_rappels_tout_pousser():
+    """Pousse toutes les échéances à venir vers l'app Rappels d'un coup."""
+    import rappels_macos
+
+    return jsonify(rappels_macos.pousser_toutes_les_echeances())
 
 
 @app.route("/api/sauvegarde", methods=["POST"])

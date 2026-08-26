@@ -1184,6 +1184,95 @@ label { font-size: 12.5px; font-weight: 550; color: var(--encre-2); }
 .colonne-notes textarea:focus { outline: none; }
 
 /* ==========================================================================
+   Relances, comparateur, liens morts
+   ========================================================================== */
+
+.liste-relances { padding: 4px; }
+
+.ligne-relance {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 10px;
+  border-bottom: 1px solid var(--hairline);
+}
+
+.ligne-relance:last-child { border-bottom: none; }
+
+.ligne-relance-info { flex: 1; min-width: 0; cursor: pointer; }
+
+.ligne-relance-titre { margin-bottom: 3px; }
+
+.ligne-relance.en-retard .ligne-relance-titre strong { color: var(--danger); }
+
+.barre-comparaison {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: var(--accent-doux);
+  border: 1px solid var(--hairline);
+  border-radius: var(--rayon);
+  padding: 10px 14px;
+  margin-bottom: 14px;
+  font-size: 13px;
+  color: var(--encre-2);
+}
+
+.case-comparaison { width: auto; margin: 0; }
+
+.puce-lien-mort {
+  color: var(--danger);
+  border: 1px solid var(--danger);
+  background: var(--danger-doux);
+  margin-left: 6px;
+}
+
+.tableau-comparateur th:first-child { color: var(--encre-3); font-weight: 550; white-space: nowrap; }
+
+.tableau-comparateur td { text-align: center; }
+
+.tableau-comparateur thead th { text-align: center; }
+
+.tableau-comparateur thead th:first-child { text-align: left; }
+
+/* ==========================================================================
+   Liens d'offres (Statistiques) et raccourci Safari (Réglages)
+   ========================================================================== */
+
+.ligne-lien-mort {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--hairline);
+  font-size: 13px;
+}
+
+.ligne-lien-mort:last-child { border-bottom: none; }
+
+.bloc-raccourci {
+  background: var(--surface-2);
+  border-radius: var(--rayon);
+  padding: 12px 14px;
+  font-size: 12.5px;
+  color: var(--encre-2);
+}
+
+.bloc-raccourci ol { margin: 8px 0 0; padding-left: 20px; }
+
+.bloc-raccourci li { margin: 4px 0; }
+
+.bloc-raccourci code {
+  background: var(--surface);
+  border-radius: 5px;
+  padding: 1px 5px;
+  font-size: 12px;
+  word-break: break-all;
+}
+
+/* ==========================================================================
    Quasi-doublons, fusion d'entreprises, connexion calendrier
    ========================================================================== */
 

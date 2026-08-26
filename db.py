@@ -97,6 +97,8 @@ COLONNES_AJOUTEES = {
         "portail_identifiant": "TEXT",
         "portail_mdp": "TEXT",
         "notes_entretien": "TEXT",
+        "lien_dernier_etat": "TEXT",      # "actif", "mort" ou "inconnu"
+        "lien_dernier_controle": "TEXT",  # horodatage ISO du dernier ping
     },
 }
 

@@ -18,6 +18,7 @@ const etat = {
   rechercheTexte: "",
   focusRecherche: false,
   propositionEntreprise: null,  // infos entreprise proposées par l'IA, écrites après validation
+  selectionComparaison: new Set(),  // ids cochés en vue liste, pour le comparateur
 };
 
 /* Couleurs par type d'objet (recherche) et par type d'échéance (agenda) —
@@ -61,6 +62,14 @@ function echapper(texte) {
   return div.innerHTML;
 }
 
+/* echapper() protège le contenu texte (<, >, &) mais pas les guillemets —
+   sans conséquence tant qu'on écrit dans du texte, mais une valeur insérée
+   dans un attribut HTML="..." doit AUSSI échapper " (sinon l'attribut se
+   referme prématurément au premier guillemet, ex. du JSON stringifié). */
+function echapperAttribut(texte) {
+  return echapper(texte).replace(/"/g, "&quot;");
+}
+
 function dateFr(iso) {
   if (!iso) return "";
   const [annee, mois, jour] = String(iso).split("-");
@@ -102,19 +111,24 @@ async function api(chemin, options = {}) {
 const VUES = {
   bord: vueBord,
   candidatures: vueCandidatures,
+  relances: vueRelances,
   agenda: vueAgenda,
   entreprises: vueEntreprises,
   contacts: vueContacts,
   documents: vueDocuments,
   statistiques: vueStats,
   recherche: vueRecherche,
+  comparer: vueComparateur,
   reglages: vueReglages,
 };
 
 const ACTIVATIONS = {
   candidatures: activerCandidatures,
+  relances: activerRelances,
   agenda: activerAgenda,
   recherche: activerRecherche,
+  comparer: activerComparateur,
+  statistiques: activerStats,
   reglages: activerReglages,
 };
 
@@ -341,10 +355,15 @@ async function vueCandidatures() {
       })
       .join("")}</div>`;
   } else {
+    // Une sélection ne survit que si les candidatures existent encore dans la liste affichée.
+    const idsVisibles = new Set(liste.map((c) => c.id));
+    for (const id of etat.selectionComparaison) {
+      if (!idsVisibles.has(id)) etat.selectionComparaison.delete(id);
+    }
     corps = `
       <div class="enveloppe-tableau"><table class="tableau">
         <thead><tr>
-          <th>Entreprise</th><th>Poste</th><th>Statut</th><th>Priorité</th>
+          <th></th><th>Entreprise</th><th>Poste</th><th>Statut</th><th>Priorité</th>
           <th>Envoyée le</th><th>Relance prévue</th><th>Ville</th>
         </tr></thead>
         <tbody>
@@ -352,7 +371,13 @@ async function vueCandidatures() {
             .map(
               (cand) => `
             <tr onclick="ouvrirDetailCandidature(${cand.id})">
-              <td class="cellule-principale">${echapper(cand.entreprise)}</td>
+              <td onclick="event.stopPropagation()">
+                <input type="checkbox" class="case-comparaison" data-id="${cand.id}"
+                       ${etat.selectionComparaison.has(cand.id) ? "checked" : ""}>
+              </td>
+              <td class="cellule-principale">${echapper(cand.entreprise)}
+                ${cand.lien_dernier_etat === "mort" ? `<span class="puce puce-lien-mort" title="Le lien de l'offre ne répond plus">Lien mort</span>` : ""}
+              </td>
               <td>${echapper(cand.poste)}</td>
               <td><span class="puce puce-statut" style="--couleur-statut:${COULEURS_STATUT[cand.statut]}"><span class="point"></span>${echapper(cand.statut)}</span></td>
               <td class="cellule-secondaire">${echapper(cand.priorite || "")}</td>
@@ -366,6 +391,13 @@ async function vueCandidatures() {
       </table></div>`;
   }
 
+  const barreComparaison = etat.modeCandidatures === "liste" && etat.selectionComparaison.size >= 2
+    ? `<div class="barre-comparaison">
+        <span>${etat.selectionComparaison.size} candidatures sélectionnées</span>
+        <button class="btn btn-accent" onclick="location.hash='#/comparer'">Comparer</button>
+       </div>`
+    : "";
+
   return `
     <div class="entete-vue">
       <h1>Candidatures</h1>
@@ -376,6 +408,7 @@ async function vueCandidatures() {
       <button class="btn btn-accent" onclick="ouvrirFormCandidature()">+ Ajouter</button>
     </div>
     ${filtres}
+    ${barreComparaison}
     ${corps}`;
 }
 
@@ -396,6 +429,15 @@ function activerCandidatures() {
   brancherFiltre("filtre-statut", "statut");
   brancherFiltre("filtre-priorite", "priorite");
   brancherFiltre("filtre-domaine", "sous_domaine");
+
+  document.querySelectorAll(".case-comparaison").forEach((case_) => {
+    case_.addEventListener("change", () => {
+      const id = Number(case_.dataset.id);
+      if (case_.checked) etat.selectionComparaison.add(id);
+      else etat.selectionComparaison.delete(id);
+      rendre();
+    });
+  });
   const recherche = document.getElementById("filtre-texte");
   if (recherche) {
     let minuteur;
@@ -474,6 +516,130 @@ function activerCandidatures() {
       document.addEventListener("pointerup", surFin);
     });
   });
+}
+
+/* ========================================================================
+   Relances : liste priorisée du jour, un clic pour marquer fait
+   ======================================================================== */
+
+async function vueRelances() {
+  const liste = await api("/api/relances");
+  if (!liste.length) {
+    return `
+      <div class="entete-vue"><h1>Relances</h1></div>
+      <div class="etat-vide">
+        <div class="icone">${ICONES.candidatures}</div>
+        <div class="titre">Rien à relancer aujourd'hui</div>
+        <p>Les candidatures dont la date de relance prévue est aujourd'hui ou dépassée
+        apparaîtront ici, des plus urgentes aux plus récentes.</p>
+      </div>`;
+  }
+  const aujourdHui = dateISOLocale(new Date());
+  const lignes = liste
+    .map((cand) => {
+      const enRetard = cand.date_relance_prevue < aujourdHui;
+      return `
+      <div class="ligne-relance${enRetard ? " en-retard" : ""}">
+        <div class="ligne-relance-info" onclick="ouvrirDetailCandidature(${cand.id})">
+          <div class="ligne-relance-titre">
+            <strong>${echapper(cand.entreprise)}</strong> — ${echapper(cand.poste)}
+            ${cand.priorite === "Haute" ? `<span class="puce puce-priorite-Haute">Priorité haute</span>` : ""}
+          </div>
+          <div class="cellule-secondaire">
+            ${enRetard ? `En retard depuis le ${dateFr(cand.date_relance_prevue)}` : "Prévue aujourd'hui"}
+            · ${echapper(cand.statut)} · ${cand.nb_relances || 0} relance(s) déjà faite(s)
+          </div>
+        </div>
+        <button type="button" class="btn btn-accent" onclick="marquerRelance(${cand.id})">Relancé</button>
+      </div>`;
+    })
+    .join("");
+  return `
+    <div class="entete-vue">
+      <div><h1>Relances</h1><div class="sous-titre">${liste.length} à faire, des plus urgentes aux plus récentes</div></div>
+    </div>
+    <div class="carte liste-relances">${lignes}</div>`;
+}
+
+function activerRelances() { /* liens inline */ }
+
+async function marquerRelance(id) {
+  try {
+    await api(`/api/candidatures/${id}/relancer`, { methode: "POST" });
+    toast("Relance enregistrée");
+    rendre();
+  } catch (erreur) {
+    toast(erreur.message, true);
+  }
+}
+
+/* ========================================================================
+   Comparateur : plusieurs candidatures côte à côte
+   ======================================================================== */
+
+const CRITERES_COMPARATEUR = [
+  ["statut", "Statut"],
+  ["priorite", "Priorité"],
+  ["sous_domaine", "Sous-domaine"],
+  ["ville", "Ville"],
+  ["mode_travail", "Mode de travail"],
+  ["duree", "Durée"],
+  ["gratification", "Gratification (€/mois)"],
+  ["date_debut_souhaitee", "Début souhaité"],
+  ["convention_envoyee", "Convention envoyée"],
+  ["source", "Source"],
+  ["date_envoi", "Envoyée le"],
+  ["date_entretien", "Entretien le"],
+];
+
+async function vueComparateur() {
+  const ids = [...etat.selectionComparaison];
+  if (ids.length < 2) {
+    return `
+      <div class="entete-vue"><h1>Comparer</h1></div>
+      <div class="etat-vide">
+        <div class="icone">${ICONES.candidatures}</div>
+        <div class="titre">Aucune sélection à comparer</div>
+        <p>Dans Candidatures (vue liste), coche au moins deux candidatures puis clique « Comparer ».</p>
+        <button class="btn btn-accent" onclick="location.hash='#/candidatures'">Aller aux candidatures</button>
+      </div>`;
+  }
+  const toutes = await api("/api/candidatures");
+  const selection = ids.map((id) => toutes.find((c) => c.id === id)).filter(Boolean);
+  const formater = (cle, valeur) => {
+    if (valeur === null || valeur === undefined || valeur === "") return "—";
+    if (cle === "gratification") return `${valeur} €/mois`;
+    if (cle.startsWith("date_")) return dateFr(valeur);
+    return echapper(valeur);
+  };
+  const lignes = CRITERES_COMPARATEUR
+    .map(
+      ([cle, libelle]) => `
+      <tr>
+        <th>${libelle}</th>
+        ${selection.map((cand) => `<td>${formater(cle, cand[cle])}</td>`).join("")}
+      </tr>`
+    )
+    .join("");
+  return `
+    <div class="entete-vue">
+      <h1>Comparer</h1>
+      <button class="btn" onclick="viderComparateur()">Vider la sélection</button>
+    </div>
+    <div class="enveloppe-tableau"><table class="tableau tableau-comparateur">
+      <thead><tr>
+        <th>Critère</th>
+        ${selection.map((cand) => `<th>${echapper(cand.entreprise)}<div class="cellule-secondaire">${echapper(cand.poste)}</div></th>`).join("")}
+      </tr></thead>
+      <tbody>${lignes}</tbody>
+    </table></div>`;
+}
+
+function activerComparateur() { /* liens inline */ }
+
+function viderComparateur() {
+  etat.selectionComparaison.clear();
+  location.hash = "#/candidatures";
 }
 
 /* ========================================================================
@@ -1116,6 +1282,7 @@ function lienGoogleAgenda(echeance) {
 }
 
 function chipEcheance(echeance) {
+  const donneesEcheance = echapperAttribut(JSON.stringify(echeance));
   return `
     <span class="chip-echeance-groupe" style="--couleur-statut:${COULEURS_ECHEANCE[echeance.type]}">
       <button class="chip-echeance"
@@ -1125,7 +1292,25 @@ function chipEcheance(echeance) {
       </button>
       <a class="chip-echeance-ajout" href="${lienGoogleAgenda(echeance)}" target="_blank" rel="noopener"
          title="Ajouter à Google Agenda" onclick="event.stopPropagation()">+</a>
+      <button type="button" class="chip-echeance-ajout" data-echeance="${donneesEcheance}"
+              title="Envoyer vers l'app Rappels (macOS)"
+              onclick="event.stopPropagation(); pousserRappelDepuisBouton(this)">R</button>
     </span>`;
+}
+
+async function pousserRappelDepuisBouton(bouton) {
+  const echeance = JSON.parse(bouton.dataset.echeance);
+  const texteInitial = bouton.textContent;
+  bouton.textContent = "…";
+  try {
+    await api("/api/rappels/echeance", { methode: "POST", corps: echeance });
+    toast("Rappel créé dans l'app Rappels");
+    bouton.textContent = "✓";
+    setTimeout(() => { bouton.textContent = texteInitial; }, 1500);
+  } catch (erreur) {
+    toast(erreur.message, true);
+    bouton.textContent = texteInitial;
+  }
 }
 
 async function vueAgenda() {
@@ -1254,9 +1439,33 @@ function ouvrirConnexionCalendrier() {
       <h3>Outlook et autres</h3>
       <p class="sous-titre">Le même fichier .ics s'importe dans la plupart des applications de
         calendrier (Outlook, Thunderbird…) ; certaines acceptent aussi l'abonnement par URL ci-dessus.</p>
+    </div>
+    <div class="bloc-calendrier">
+      <h3>App Rappels (macOS)</h3>
+      <p class="sous-titre">En plus du calendrier, chaque échéance peut aussi devenir un rappel daté
+        (bouton <strong>R</strong> à côté de chaque échéance), ou toutes d'un coup ci-dessous. La toute
+        première fois, macOS demande d'autoriser Azimut à automatiser Rappels — à accorder une fois.</p>
+      <button class="btn" id="btn-tout-pousser-rappels">Envoyer toutes les échéances vers Rappels</button>
+      <p class="sous-titre" id="resultat-rappels" style="margin-top:8px;"></p>
     </div>`,
     `<button class="btn btn-accent" onclick="fermerModale()">Fermer</button>`
   );
+  document.getElementById("btn-tout-pousser-rappels").addEventListener("click", async (evenement) => {
+    const bouton = evenement.currentTarget;
+    bouton.disabled = true;
+    bouton.textContent = "Envoi en cours…";
+    try {
+      const resultat = await api("/api/rappels/tout_pousser", { methode: "POST" });
+      document.getElementById("resultat-rappels").textContent =
+        `${resultat.reussies} rappel(s) créé(s)` + (resultat.echouees ? `, ${resultat.echouees} échec(s).` : ".");
+      toast(`${resultat.reussies} rappel(s) envoyé(s) vers Rappels`);
+    } catch (erreur) {
+      toast(erreur.message, true);
+    } finally {
+      bouton.disabled = false;
+      bouton.textContent = "Envoyer toutes les échéances vers Rappels";
+    }
+  });
 }
 
 /* ========================================================================
@@ -1393,6 +1602,7 @@ async function supprimerDocument(idDocument, idCandidature) {
 
 async function vueStats() {
   const stats = await api("/api/stats/avancees");
+  const liens = await api("/api/liens/etat");
   if (!stats.total) {
     return `
       <div class="entete-vue"><h1>Statistiques</h1></div>
@@ -1458,7 +1668,50 @@ async function vueStats() {
             <tbody>${sources}</tbody>
           </table></div>` : `<div class="sous-titre">Renseigne la source de tes candidatures pour comparer.</div>`}
       </div>
+      <div class="carte">
+        <h2>Liens d'offres</h2>
+        <p class="sous-titre">Un ping HTTP conservateur : seul un lien clairement retiré (404/410) est
+        signalé « mort » — souvent le signe que le poste a été pourvu.</p>
+        <div class="rangee-kpi" style="margin:12px 0;">
+          <div class="tuile"><div class="tuile-libelle">Actifs</div><div class="tuile-valeur">${liens.actifs}</div></div>
+          <div class="tuile"><div class="tuile-libelle">Morts</div><div class="tuile-valeur">${liens.morts}</div></div>
+          <div class="tuile"><div class="tuile-libelle">Non vérifiés</div><div class="tuile-valeur">${liens.non_verifies}</div></div>
+        </div>
+        ${liens.liens_morts.length ? liens.liens_morts.map((l) => `
+          <div class="ligne-lien-mort">
+            <span onclick="ouvrirDetailCandidature(${l.id})" style="cursor:pointer;">
+              <strong>${echapper(l.entreprise)}</strong> — ${echapper(l.poste)}
+            </span>
+            <a class="lien-detail" href="${echapper(l.lien_offre)}" target="_blank" rel="noopener">Voir l'offre</a>
+          </div>`).join("") : ""}
+        <div class="actions-reglages">
+          <button class="btn btn-accent" id="btn-verifier-liens">Vérifier maintenant</button>
+        </div>
+        <p class="sous-titre" id="resultat-verification-liens" style="margin-top:8px;"></p>
+      </div>
     </div>`;
+}
+
+function activerStats() {
+  const bouton = document.getElementById("btn-verifier-liens");
+  if (!bouton) return;
+  bouton.addEventListener("click", async () => {
+    bouton.disabled = true;
+    bouton.textContent = "Vérification en cours…";
+    try {
+      const resultat = await api("/api/liens/verifier", { methode: "POST", corps: {} });
+      document.getElementById("resultat-verification-liens").textContent =
+        `${resultat.verifies} lien(s) vérifié(s) : ${resultat.actifs} actif(s), ` +
+        `${resultat.morts} mort(s), ${resultat.inconnus} indéterminé(s).`;
+      toast("Vérification terminée");
+      rendre();
+    } catch (erreur) {
+      toast(erreur.message, true);
+    } finally {
+      bouton.disabled = false;
+      bouton.textContent = "Vérifier maintenant";
+    }
+  });
 }
 
 /* ========================================================================
@@ -1633,6 +1886,26 @@ async function vueReglages() {
           <button class="btn btn-accent" id="reg-sauvegarder">Sauvegarder maintenant</button>
         </div>
         <div id="reg-resultat-sauvegarde" class="sous-titre" style="margin-top:8px;"></div>
+      </div>
+
+      <div class="carte">
+        <h2>Capture rapide depuis Safari</h2>
+        <p class="sous-titre">Un Raccourci macOS pour envoyer la page (ou le texte sélectionné) vue
+        dans Safari directement vers Azimut, en brouillon à compléter — Azimut doit être ouvert pour
+        le recevoir. À construire une fois dans l'app Raccourcis :</p>
+        <div class="bloc-raccourci">
+          <ol>
+            <li>Nouveau Raccourci, ajouter <strong>« Obtenir la page web actuelle »</strong> (Safari).</li>
+            <li>Ajouter <strong>« Obtenir le contenu de l'URL »</strong> : méthode <code>POST</code>,
+              URL <code>${echapper(location.origin)}/api/rapide/offre</code>, corps JSON avec les champs
+              <code>lien</code> (la page web actuelle) et <code>texte</code> (le texte sélectionné, si besoin
+              via « Obtenir le texte sélectionné » avant cette étape).</li>
+            <li>Ajouter <strong>« Afficher une notification »</strong> pour voir le résultat.</li>
+            <li>Épingler le Raccourci au Dock, au menu Partage, ou lui donner un raccourci clavier.</li>
+          </ol>
+        </div>
+        <p class="sous-titre" style="margin-top:8px;">La candidature créée porte un statut « À préparer »
+        et une note qui rappelle son origine — à relire et compléter dans Azimut.</p>
       </div>
 
       <div class="carte">

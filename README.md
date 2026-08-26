@@ -8,7 +8,7 @@
   ![Plateforme](https://img.shields.io/badge/plateforme-macOS-3d8ff0)
   ![Python](https://img.shields.io/badge/python-3.10%2B-3d8ff0)
   ![Licence](https://img.shields.io/badge/licence-MIT-3d8ff0)
-  ![Tests](https://img.shields.io/badge/tests-138%20passent-3d8ff0)
+  ![Tests](https://img.shields.io/badge/tests-202%20passent-3d8ff0)
 
 </div>
 
@@ -37,6 +37,7 @@ explicite (export, appel à un assistant IA si tu actives cette fonction).
 - [Partager l'appli à un ami](#partager-lappli-à-un-ami)
 - [La ligne de commande](#la-ligne-de-commande)
 - [Assistant IA — n'importe quel fournisseur](#assistant-ia--nimporte-quel-fournisseur)
+- [Automatisations macOS](#automatisations-macos)
 - [Règles appliquées par le code](#règles-appliquées-par-le-code-pas-seulement-documentées)
 - [API pour une IA (Claude Code ou autre)](#api-pour-une-ia-claude-code-ou-autre)
 - [Structure du projet](#structure-du-projet)
@@ -56,6 +57,18 @@ explicite (export, appel à un assistant IA si tu actives cette fonction).
   notes à droite, sauvegardée automatiquement dans la candidature).
 - **Accès aux portails de recrutement** : URL, identifiant et mot de passe par
   candidature (masqué dans l'interface, jamais exporté).
+- **Relances** : une vue dédiée liste, des plus urgentes aux plus récentes,
+  toutes les candidatures à relancer aujourd'hui ou en retard — un bouton
+  « Relancé » enregistre le geste en un clic (compteur, statut, journal).
+- **Comparateur** : coche plusieurs candidatures en vue liste pour les mettre
+  côte à côte (gratification, durée, mode de travail, dates…) et arbitrer
+  entre plusieurs propositions en cours.
+- **Détection des liens d'offres morts** : un ping HTTP conservateur (relancé
+  automatiquement toutes les 6h pendant qu'Azimut tourne, ou à la demande)
+  signale les offres retirées (404/410) — souvent le signe qu'un poste est
+  pourvu — sans jamais de faux positif sur une simple panne réseau.
+- **Capture rapide depuis Safari** : un Raccourci macOS envoie la page (ou le
+  texte sélectionné) vers Azimut, qui crée un brouillon à compléter.
 
 **Organisation**
 - **Entreprises** avec contexte et actualités ; détection des doublons
@@ -74,7 +87,11 @@ explicite (export, appel à un assistant IA si tu actives cette fonction).
   acceptées, délais moyens, taux de réponse par source.
 - **Agenda** (vue mois ou 2 semaines) connectable à un vrai calendrier :
   abonnement `webcal://` en direct pour Calendrier (Mac), bouton
-  « Ajouter à Google Agenda » par échéance, ou fichier `.ics` universel.
+  « Ajouter à Google Agenda » par échéance, fichier `.ics` universel, et
+  chaque échéance peut aussi devenir un rappel daté dans l'app **Rappels**
+  (macOS), une par une ou toutes d'un coup.
+- **Widget de barre de menus** (optionnel, `Azimut Widget.app`) : relances du
+  jour et prochain entretien d'un coup d'œil, sans ouvrir la fenêtre.
 
 **Données et vie privée**
 - **Export / import Excel** : sauvegarde lisible et restauration, doublons
@@ -141,6 +158,8 @@ python cli.py candidatures lister
 python cli.py candidatures lister --statut Entretien --priorite Haute
 python cli.py candidatures modifier 12 --statut "Réponse reçue" --date-reponse 02/09/2026
 python cli.py candidatures voir 12
+python cli.py candidatures relances               # relances à faire aujourd'hui ou en retard
+python cli.py candidatures relancer 12             # +1 relance, statut → Relancée, date effacée
 ```
 
 Options d'ajout / modification : `--date-envoi`, `--sous-domaine`, `--lien-offre`,
@@ -248,6 +267,35 @@ Claude Code peut piloter la base directement via la ligne de commande ou les
 fonctions Python documentées dans [`CLAUDE.md`](CLAUDE.md), sur ton abonnement
 existant, sans clé API séparée.
 
+## Automatisations macOS
+
+**App Rappels.** En plus du calendrier, le bouton **R** à côté de chaque
+échéance (agenda) crée un rappel daté dans l'app Rappels ; un bouton dans
+« Connecter un calendrier » les envoie toutes d'un coup. La toute première
+fois, macOS demande d'autoriser Azimut à automatiser Rappels (Réglages Système
+→ Confidentialité et sécurité → Automatisation) — à accorder une fois.
+
+**Liens d'offres morts.** Un ping HTTP conservateur (HEAD, puis GET si
+nécessaire) tourne toutes les 6h en arrière-plan pendant qu'Azimut est ouvert,
+et à la demande depuis **Statistiques** (bouton « Vérifier maintenant »). Seul
+un code 404/410 sans ambiguïté marque un lien « mort » ; un délai dépassé, une
+erreur 5xx ou un blocage anti-robot (403) restent « inconnu » — jamais de
+faux positif. Rien n'est déduit du contenu de la page, seulement du code HTTP.
+
+**Capture rapide (Raccourci Safari).** Voir la carte « Capture rapide depuis
+Safari » dans Réglages pour construire le Raccourci macOS (4 blocs) qui envoie
+la page ou le texte sélectionné vers Azimut. La candidature créée est un
+brouillon (statut « À préparer », note d'origine) à relire et compléter —
+jamais une candidature pleinement renseignée sans passage par l'interface.
+Azimut doit être ouvert pour la recevoir (c'est un appel à son serveur local).
+
+**Widget de barre de menus.** Double-cliquer sur `Azimut Widget.app` : une
+icône dans la barre de menus (pas dans le Dock) affiche le nombre de relances
+du jour et le prochain entretien, avec un raccourci pour ouvrir l'appli
+complète. Lit la base directement, fonctionne même si la fenêtre principale
+est fermée. Peut être ajouté aux éléments de connexion (Réglages Système →
+Général → Ouverture) pour démarrer automatiquement.
+
 ## Règles appliquées par le code (pas seulement documentées)
 
 Toute valeur hors liste est refusée avec un message clair listant les valeurs
@@ -332,18 +380,23 @@ français.
 ```
 azimut/
   Azimut.app                        # double-clic : l'application (fenêtre native)
+  Azimut Widget.app                 # double-clic : widget de barre de menus (optionnel)
   Azimut (terminal).command         # secours : même fenêtre, depuis le Terminal
   Créer un zip à partager.command   # double-clic : zip (sans données) sur le Bureau
   app_bureau.py     # fenêtre native (pywebview) autour du serveur interne
+  menu_barre.py     # widget de barre de menus (rumps) : relances, prochain entretien
   serveur.py        # serveur interne (Flask) : API JSON + interface
   static/           # interface (index.html, style.css, app.js)
   db.py             # connexion SQLite, création des tables, migrations
   valeurs.py        # valeurs autorisées + validation des champs
   exceptions.py     # exceptions métier (messages en français)
   entreprises.py    # CRUD entreprises (anti-doublon, conflits, fusion)
-  candidatures.py   # CRUD candidatures (anti-doublon)
+  candidatures.py   # CRUD candidatures (anti-doublon), relances
   contacts.py       # CRUD contacts (anti-doublon)
   doublons.py       # quasi-doublons : intitulés proches, lien d'offre, fusion
+  verification_liens.py  # détection des liens d'offres morts (ping conservateur)
+  rappels_macos.py  # pousse des échéances vers l'app Rappels (AppleScript)
+  rapide.py         # capture rapide (brouillon depuis un Raccourci macOS)
   export_excel.py   # export .xlsx (4 onglets, style du fichier d'origine)
   import_excel.py   # import d'un export .xlsx (sauvegarde / restauration)
   evenements.py     # journal automatique des candidatures (timeline)
@@ -358,7 +411,7 @@ azimut/
   cli.py            # interface en ligne de commande
   CLAUDE.md         # mode d'emploi du projet pour les IA (Claude Code…)
   suivi             # exécutable terminal (équivalent de python cli.py)
-  tests/            # 138 tests — python -m unittest discover -s tests
+  tests/            # 202 tests — python -m unittest discover -s tests
   suivi_candidatures.db   # la base — seule source de vérité (non versionnée)
 ```
 
