@@ -32,7 +32,7 @@ def ajouter_contact(entreprise_nom, nom, chemin_db=None, **champs):
 
     - Crée l'entreprise si elle n'existe pas encore (sans doublon).
     - Lève DoublonContact si un contact du même nom existe déjà pour cette entreprise.
-    - Valide les champs optionnels (type_contact, statut_contact, source, dates...).
+    - Valide les champs optionnels (email, telephone, linkedin, statut_contact, source, dates...).
     """
     if not nom or not str(nom).strip():
         raise ValeurNonAutorisee("Le nom du contact est obligatoire.")

@@ -90,7 +90,7 @@ class TestServeur(unittest.TestCase):
         self._ajouter()
         contact = self.client.post(
             "/api/contacts",
-            json={"entreprise": "AgentikCo", "nom": "Marie Petit", "type_contact": "Email"},
+            json={"entreprise": "AgentikCo", "nom": "Marie Petit", "email": "marie@agentik.co"},
         )
         self.assertEqual(contact.status_code, 201)
         entreprises_liste = self.client.get("/api/entreprises").get_json()

@@ -105,8 +105,9 @@ CHAMPS_CANDIDATURE = {
 CHAMPS_CONTACT = {
     "poste": "poste",
     "equipe": "equipe",
-    "type_contact": "type_contact",
-    "valeur_contact": "valeur_contact",
+    "email": "email",
+    "telephone": "telephone",
+    "linkedin": "linkedin",
     "statut_contact": "statut_contact",
     "date_contact": "date_contact",
     "source": "source",
@@ -154,8 +155,9 @@ def _options_contact(parseur, avec_nom_option):
         parseur.add_argument("--nom", help="Nouveau nom du contact")
     parseur.add_argument("--poste", help="Poste du contact")
     parseur.add_argument("--equipe", help="Équipe du contact")
-    parseur.add_argument("--type", dest="type_contact", help="Email, LinkedIn, Téléphone ou Autre")
-    parseur.add_argument("--valeur", dest="valeur_contact", help="Email, URL LinkedIn ou numéro")
+    parseur.add_argument("--email", help="Adresse email du contact")
+    parseur.add_argument("--telephone", help="Numéro de téléphone du contact")
+    parseur.add_argument("--linkedin", help="URL du profil LinkedIn du contact")
     parseur.add_argument("--statut", dest="statut_contact", help="Statut du contact")
     parseur.add_argument("--date-contact", dest="date_contact", help="Date de prise de contact")
     parseur.add_argument("--source", help="Où le contact a été trouvé")
@@ -444,9 +446,15 @@ def executer(args):
                 print("Aucun contact trouvé.")
                 return
             _afficher_table(
-                [("N°", 5), ("Entreprise", 22), ("Nom", 22), ("Poste", 26), ("Contact", 30), ("Statut", 14)],
                 [
-                    (c["id"], c["entreprise"], c["nom"], c["poste"], c["valeur_contact"], c["statut_contact"])
+                    ("N°", 5), ("Entreprise", 20), ("Nom", 20), ("Poste", 22),
+                    ("Email", 24), ("Téléphone", 14), ("LinkedIn", 24), ("Statut", 14),
+                ],
+                [
+                    (
+                        c["id"], c["entreprise"], c["nom"], c["poste"],
+                        c["email"], c["telephone"], c["linkedin"], c["statut_contact"],
+                    )
                     for c in liste
                 ],
             )

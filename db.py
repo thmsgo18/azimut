@@ -48,8 +48,9 @@ CREATE TABLE IF NOT EXISTS contacts (
     nom TEXT NOT NULL,
     poste TEXT,
     equipe TEXT,
-    type_contact TEXT,
-    valeur_contact TEXT,
+    email TEXT,
+    telephone TEXT,
+    linkedin TEXT,
     statut_contact TEXT DEFAULT 'À contacter',
     date_contact DATE,
     source TEXT,
@@ -100,7 +101,39 @@ COLONNES_AJOUTEES = {
         "lien_dernier_etat": "TEXT",      # "actif", "mort" ou "inconnu"
         "lien_dernier_controle": "TEXT",  # horodatage ISO du dernier ping
     },
+    "contacts": {
+        "email": "TEXT",
+        "telephone": "TEXT",
+        "linkedin": "TEXT",
+    },
 }
+
+
+def _migrer_contacts_champs_separes(conn):
+    """Ancienne version : un couple générique (type_contact, valeur_contact).
+    Nouvelle version : un champ dédié par type de coordonnée (email,
+    telephone, linkedin). Migration ponctuelle : déclenchée par la présence
+    des anciennes colonnes, qui sont supprimées à la fin — ce code ne
+    s'exécute donc plus jamais après la première base migrée."""
+    colonnes = {ligne[1] for ligne in conn.execute("PRAGMA table_info(contacts)")}
+    if "type_contact" not in colonnes:
+        return
+    correspondance = {"Email": "email", "LinkedIn": "linkedin", "Téléphone": "telephone"}
+    for ligne in conn.execute("SELECT id, type_contact, valeur_contact, notes FROM contacts"):
+        id_contact, type_contact, valeur, notes = (
+            ligne["id"], ligne["type_contact"], ligne["valeur_contact"], ligne["notes"]
+        )
+        if not valeur:
+            continue
+        champ = correspondance.get(type_contact)
+        if champ:
+            conn.execute(f"UPDATE contacts SET {champ} = ? WHERE id = ?", (valeur, id_contact))
+        else:
+            ajout = f"Ancien contact ({type_contact or 'Autre'}) : {valeur}"
+            nouvelles_notes = f"{notes}\n{ajout}" if notes else ajout
+            conn.execute("UPDATE contacts SET notes = ? WHERE id = ?", (nouvelles_notes, id_contact))
+    conn.execute("ALTER TABLE contacts DROP COLUMN type_contact")
+    conn.execute("ALTER TABLE contacts DROP COLUMN valeur_contact")
 
 
 def _migrer(conn):
@@ -109,6 +142,7 @@ def _migrer(conn):
         for colonne, type_sql in colonnes.items():
             if colonne not in existantes:
                 conn.execute(f"ALTER TABLE {table} ADD COLUMN {colonne} {type_sql}")
+    _migrer_contacts_champs_separes(conn)
     conn.commit()
 
 

@@ -198,12 +198,19 @@ class TestServeurRobustesse(unittest.TestCase):
                 date_contact DATE, source TEXT, notes TEXT);
             INSERT INTO entreprises (nom) VALUES ('AgentikCo');
             INSERT INTO candidatures (entreprise_id, poste) VALUES (1, 'Stage');
+            INSERT INTO contacts (entreprise_id, nom, type_contact, valeur_contact)
+                VALUES (1, 'Marie Petit', 'Email', 'marie@agentik.co');
+            INSERT INTO contacts (entreprise_id, nom, type_contact, valeur_contact)
+                VALUES (1, 'Karim Haddad', 'LinkedIn', 'linkedin.com/in/karim');
+            INSERT INTO contacts (entreprise_id, nom, type_contact, valeur_contact, notes)
+                VALUES (1, 'Ali Ben', 'Fax', '01 23 45 67 89', 'Contact ancien');
             """
         )
         conn.commit()
         conn.close()
 
         from candidatures import lister_candidatures, modifier_candidature
+        from contacts import lister_contacts
 
         liste = lister_candidatures(chemin_db=str(ancienne))
         self.assertEqual(liste[0]["poste"], "Stage")
@@ -214,6 +221,20 @@ class TestServeurRobustesse(unittest.TestCase):
         self.assertEqual(
             lister_candidatures(chemin_db=str(ancienne))[0]["portail_identifiant"], "thomas"
         )
+
+        # L'ancien couple (type_contact, valeur_contact) est réparti dans les
+        # nouveaux champs dédiés, sans perte pour un type non reconnu (« Fax »).
+        contacts_migres = {c["nom"]: c for c in lister_contacts(chemin_db=str(ancienne))}
+        self.assertEqual(contacts_migres["Marie Petit"]["email"], "marie@agentik.co")
+        self.assertEqual(contacts_migres["Karim Haddad"]["linkedin"], "linkedin.com/in/karim")
+        self.assertIn("Fax", contacts_migres["Ali Ben"]["notes"])
+        self.assertIn("01 23 45 67 89", contacts_migres["Ali Ben"]["notes"])
+        self.assertIn("Contact ancien", contacts_migres["Ali Ben"]["notes"])
+        conn = sqlite3.connect(ancienne)
+        colonnes = {ligne[1] for ligne in conn.execute("PRAGMA table_info(contacts)")}
+        conn.close()
+        self.assertNotIn("type_contact", colonnes)
+        self.assertNotIn("valeur_contact", colonnes)
 
 
 class TestValidationValeurs(unittest.TestCase):

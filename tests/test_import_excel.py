@@ -54,8 +54,7 @@ class TestImportExcel(unittest.TestCase):
             "AgentikCo",
             "Marie Petit",
             poste="Lead AI",
-            type_contact="Email",
-            valeur_contact="marie@agentik.co",
+            email="marie@agentik.co",
             statut_contact="Répondu",
             date_contact="2026-08-12",
             chemin_db=self.source,
@@ -89,6 +88,7 @@ class TestImportExcel(unittest.TestCase):
         self.assertEqual(contacts_cible[0]["nom"], "Marie Petit")
         self.assertEqual(contacts_cible[0]["date_contact"], "2026-08-12")
         self.assertEqual(contacts_cible[0]["statut_contact"], "Répondu")
+        self.assertEqual(contacts_cible[0]["email"], "marie@agentik.co")
 
         entreprises_cible = lister_entreprises(chemin_db=self.cible)
         agentik_ent = next(e for e in entreprises_cible if e["nom"] == "AgentikCo")

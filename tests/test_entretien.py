@@ -45,8 +45,7 @@ class TestFicheEntretien(unittest.TestCase):
             "AgentikCo",
             "Marie Petit",
             poste="Lead AI",
-            type_contact="Email",
-            valeur_contact="marie@agentik.co",
+            email="marie@agentik.co",
             chemin_db=self.chemin_db,
         )
         fiche = generer_fiche_entretien(numero, chemin_db=self.chemin_db)

@@ -1276,11 +1276,15 @@ async function ouvrirDetailEntreprise(numero) {
     const contactsEnt = listeContacts.filter((c) => c.entreprise === ent.nom);
     const candidaturesEnt = listeCandidatures.filter((c) => c.entreprise === ent.nom);
 
-    const ligneContact = (c) => `
+    const ligneContact = (c) => {
+      const coordonnee = c.email || c.telephone || c.linkedin || "";
+      return `
       <div class="ligne-liee" onclick="ouvrirDetailContact(${c.id})">
-        <span class="cellule-principale">${echapper(c.nom)}${c.poste ? ` <span class="cellule-secondaire">— ${echapper(c.poste)}</span>` : ""}</span>
+        <span class="cellule-principale">${echapper(c.nom)}${c.poste ? ` <span class="cellule-secondaire">${echapper(c.poste)}</span>` : ""}</span>
+        ${coordonnee ? `<span class="cellule-secondaire">${echapper(coordonnee)}</span>` : ""}
         ${c.statut_contact ? `<span class="puce">${echapper(c.statut_contact)}</span>` : ""}
       </div>`;
+    };
     const ligneCandidature = (c) => `
       <div class="ligne-liee" onclick="ouvrirDetailCandidature(${c.id})">
         <span class="cellule-principale">${echapper(c.poste)}</span>
@@ -1345,7 +1349,9 @@ async function vueContacts() {
       <td class="cellule-principale">${echapper(contact.nom)}</td>
       <td>${echapper(contact.entreprise)}</td>
       <td class="cellule-secondaire">${echapper(contact.poste || "")}</td>
-      <td class="cellule-secondaire">${echapper(contact.valeur_contact || "")}</td>
+      <td class="cellule-secondaire">${echapper(contact.email || "")}</td>
+      <td class="cellule-secondaire">${echapper(contact.telephone || "")}</td>
+      <td class="cellule-secondaire">${echapper(contact.linkedin || "")}</td>
       <td><span class="puce">${echapper(contact.statut_contact || "")}</span></td>
       <td class="cellule-date">${dateFr(contact.date_contact)}</td>
     </tr>`
@@ -1359,7 +1365,7 @@ async function vueContacts() {
     </div>
     ${liste.length ? `
       <div class="enveloppe-tableau"><table class="tableau">
-        <thead><tr><th>Nom</th><th>Entreprise</th><th>Poste</th><th>Contact</th><th>Statut</th><th>Contacté le</th></tr></thead>
+        <thead><tr><th>Nom</th><th>Entreprise</th><th>Poste</th><th>Email</th><th>Téléphone</th><th>LinkedIn</th><th>Statut</th><th>Contacté le</th></tr></thead>
         <tbody>${lignes}</tbody>
       </table></div>` : `
       <div class="etat-vide">
@@ -1382,19 +1388,19 @@ async function ouvrirDetailContact(numero) {
     if (!contact) { toast("Contact introuvable.", true); return; }
     const entreprise = listeEntreprises.find((e) => e.nom === contact.entreprise);
 
-    let valeurContact = null;
-    if (contact.valeur_contact) {
-      if (contact.type_contact === "Email") {
-        valeurContact = `<a class="lien-detail" href="mailto:${echapper(contact.valeur_contact)}">${echapper(contact.valeur_contact)}</a>`;
-      } else if (/^https?:\/\//i.test(contact.valeur_contact)) {
-        valeurContact = `<a class="lien-detail" href="${echapper(contact.valeur_contact)}" target="_blank" rel="noopener">${echapper(contact.valeur_contact)}</a>`;
-      } else {
-        valeurContact = echapper(contact.valeur_contact);
-      }
-    }
     const ligneEntreprise = entreprise
       ? `<a class="lien-detail" href="#" onclick="event.preventDefault(); ouvrirDetailEntreprise(${entreprise.id})">${echapper(contact.entreprise)}</a>`
       : echapper(contact.entreprise);
+
+    // Un champ n'est affiché que s'il n'est pas vide (aucun email/téléphone/
+    // LinkedIn) : pas de ligne "—" pour une coordonnée non renseignée.
+    const champsCoordonnees = [
+      contact.email ? champAffiche("Email", `<a class="lien-detail" href="mailto:${echapper(contact.email)}">${echapper(contact.email)}</a>`) : "",
+      contact.telephone ? champAffiche("Téléphone", `<a class="lien-detail" href="tel:${echapper(contact.telephone)}">${echapper(contact.telephone)}</a>`) : "",
+      contact.linkedin ? champAffiche("LinkedIn", /^https?:\/\//i.test(contact.linkedin)
+        ? `<a class="lien-detail" href="${echapper(contact.linkedin)}" target="_blank" rel="noopener">${echapper(contact.linkedin)}</a>`
+        : echapper(contact.linkedin)) : "",
+    ].join("");
 
     const corps = `
       <div class="fiche-entete-detail">
@@ -1406,9 +1412,8 @@ async function ouvrirDetailContact(numero) {
       </div>
       <div class="grille-form">
         ${champAffiche("Équipe", contact.equipe ? echapper(contact.equipe) : null)}
-        ${champAffiche("Type de contact", contact.type_contact ? echapper(contact.type_contact) : null)}
-        ${champAffiche("Email / lien / téléphone", valeurContact, true)}
         ${champAffiche("Contacté le", dateFr(contact.date_contact))}
+        ${champsCoordonnees}
         ${champAffiche("Trouvé via", contact.source ? echapper(contact.source) : null)}
       </div>
       ${contact.notes ? `<h3 class="section-panneau">Notes</h3><div class="texte-long">${echapper(contact.notes)}</div>` : ""}`;
@@ -1465,8 +1470,9 @@ async function ouvrirFormContact(numero = null) {
       ${champTexte("nom", "Nom *", contact.nom)}
       ${champTexte("poste", "Poste", contact.poste)}
       ${champTexte("equipe", "Équipe", contact.equipe)}
-      ${champSelect("type_contact", "Type de contact", v.types_contact, contact.type_contact)}
-      ${champTexte("valeur_contact", "Email / lien / téléphone", contact.valeur_contact)}
+      ${champTexte("email", "Email", contact.email, "email")}
+      ${champTexte("telephone", "Téléphone", contact.telephone, "tel")}
+      ${champTexte("linkedin", "LinkedIn", contact.linkedin, "url")}
       ${champSelect("statut_contact", "Statut", v.statuts_contact, contact.statut_contact || "À contacter", false)}
       ${champTexte("date_contact", "Contacté le", contact.date_contact, "date")}
       ${champSelect("source", "Trouvé via", v.sources_contact, contact.source)}

@@ -78,12 +78,18 @@ def generer_fiche_entretien(candidature_id, chemin_db=None):
                 morceaux.append(contact["poste"])
             if contact["equipe"]:
                 morceaux.append(f"équipe {contact['equipe']}")
-            ligne = " — ".join(morceaux)
-            if contact["valeur_contact"]:
-                type_contact = contact["type_contact"] or "Contact"
-                ligne += f" ({type_contact} : {contact['valeur_contact']})"
+            ligne = ", ".join(morceaux)
+            coordonnees = []
+            if contact["email"]:
+                coordonnees.append(f"Email : {contact['email']}")
+            if contact["telephone"]:
+                coordonnees.append(f"Téléphone : {contact['telephone']}")
+            if contact["linkedin"]:
+                coordonnees.append(f"LinkedIn : {contact['linkedin']}")
+            if coordonnees:
+                ligne += " (" + ", ".join(coordonnees) + ")"
             if contact["statut_contact"]:
-                ligne += f" — {contact['statut_contact']}"
+                ligne += f", {contact['statut_contact']}"
             lignes.append(f"- {ligne}")
             if contact["notes"]:
                 lignes.append(f"  - Notes : {contact['notes']}")

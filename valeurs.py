@@ -39,8 +39,6 @@ SOURCES_CANDIDATURE = [
     "Autre",
 ]
 
-TYPES_CONTACT = ["Email", "LinkedIn", "Téléphone", "Autre"]
-
 STATUTS_CONTACT = ["À contacter", "Contacté", "Répondu", "Pas de réponse"]
 
 SOURCES_CONTACT = [
@@ -65,7 +63,6 @@ LISTES_AUTORISEES = {
         "source": SOURCES_CANDIDATURE,
     },
     "contacts": {
-        "type_contact": TYPES_CONTACT,
         "statut_contact": STATUTS_CONTACT,
         "source": SOURCES_CONTACT,
     },
@@ -106,8 +103,9 @@ CHAMPS_MODIFIABLES = {
         "nom",
         "poste",
         "equipe",
-        "type_contact",
-        "valeur_contact",
+        "email",
+        "telephone",
+        "linkedin",
         "statut_contact",
         "date_contact",
         "source",

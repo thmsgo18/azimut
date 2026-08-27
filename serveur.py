@@ -47,7 +47,6 @@ from valeurs import (
     STATUTS,
     STATUTS_CONTACT,
     TYPES_CANDIDATURE,
-    TYPES_CONTACT,
     TYPES_DOCUMENT,
 )
 
@@ -120,7 +119,6 @@ def api_valeurs():
             "modes_travail": MODES_TRAVAIL,
             "conventions": CONVENTIONS,
             "sources_candidature": SOURCES_CANDIDATURE,
-            "types_contact": TYPES_CONTACT,
             "statuts_contact": STATUTS_CONTACT,
             "sources_contact": SOURCES_CONTACT,
             "types_document": TYPES_DOCUMENT,

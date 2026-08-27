@@ -28,7 +28,6 @@ from valeurs import (
     STATUTS,
     STATUTS_CONTACT,
     TYPES_CANDIDATURE,
-    TYPES_CONTACT,
 )
 
 # Palette et styles repris du fichier Excel existant.
@@ -225,7 +224,7 @@ def _onglet_suivi(wb, liste, ligne_max):
         lien_contacts = ws.cell(
             row=ligne,
             column=24,
-            value=f'=IFERROR(HYPERLINK("#Contacts!A"&MATCH($A{ligne},Contacts!$A:$A,0),"→ Contacts"),"—")',
+            value=f'=IFERROR(HYPERLINK("#Contacts!A"&MATCH($A{ligne},Contacts!$A:$A,0),"→ Contacts"),"(aucun)")',
         )
         lien_contacts.font = POLICE_LIEN
 
@@ -294,15 +293,16 @@ def _onglet_contacts(wb, liste, ligne_max):
         "Nom",
         "Poste",
         "Équipe",
-        "Type de contact",
-        "Contact (email / lien / tél)",
+        "Email",
+        "Téléphone",
+        "LinkedIn",
         "Statut",
         "Date de contact",
         "Source",
         "Notes",
         "Offre associée",
     ]
-    largeurs = [20, 20, 24, 18, 16, 30, 16, 16, 24, 30, 14]
+    largeurs = [20, 20, 24, 18, 24, 16, 30, 16, 16, 24, 30, 14]
     _preparer_onglet(ws, titres, largeurs, ligne_max, ligne_donnees=2)
     for i, contact in enumerate(liste):
         ligne = 2 + i
@@ -311,8 +311,9 @@ def _onglet_contacts(wb, liste, ligne_max):
             contact["nom"],
             contact["poste"],
             contact["equipe"],
-            contact["type_contact"],
-            contact["valeur_contact"],
+            contact["email"],
+            contact["telephone"],
+            contact["linkedin"],
             contact["statut_contact"],
             _date_fr(contact["date_contact"]),
             contact["source"],
@@ -322,17 +323,16 @@ def _onglet_contacts(wb, liste, ligne_max):
             ws.cell(row=ligne, column=col, value=valeur)
         lien = ws.cell(
             row=ligne,
-            column=11,
+            column=12,
             value=(
                 "=IFERROR(HYPERLINK(\"#'Suivi candidatures'!A\"&"
-                f"MATCH($A{ligne},'Suivi candidatures'!$A:$A,0),\"→ Offre\"),\"—\")"
+                f"MATCH($A{ligne},'Suivi candidatures'!$A:$A,0),\"→ Offre\"),\"(aucune)\")"
             ),
         )
         lien.font = POLICE_LIEN
     for colonne, valeurs in [
-        ("E", TYPES_CONTACT),
-        ("G", STATUTS_CONTACT),
-        ("I", SOURCES_CONTACT),
+        ("H", STATUTS_CONTACT),
+        ("J", SOURCES_CONTACT),
     ]:
         _ajouter_validation(ws, colonne, valeurs, 2, ligne_max)
     return ws
@@ -388,7 +388,7 @@ def _onglet_tableau_de_bord(wb, ligne_max_suivi, ligne_max_contacts):
     for i, domaine in enumerate(SOUS_DOMAINES):
         ligne_compteur(16 + i, domaine, f'=COUNTIF({plage_domaine},"{domaine}")')
 
-    plage_contacts = f"Contacts!$G$2:$G${ligne_max_contacts}"
+    plage_contacts = f"Contacts!$H$2:$H${ligne_max_contacts}"
     entete_section(24, "Statut des contacts")
     for i, statut in enumerate(STATUTS_CONTACT):
         ligne_compteur(25 + i, statut, f'=COUNTIF({plage_contacts},"{statut}")')

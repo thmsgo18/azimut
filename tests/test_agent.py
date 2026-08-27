@@ -118,7 +118,7 @@ class TestNormaliserProposition(unittest.TestCase):
         brute = {
             "entreprise": {"nom": "AgentikCo", "site_web": "https://agentik.co"},
             "candidature": {"poste": "Stage", "gratification": 1400},
-            "contacts": [{"nom": "Marie Petit", "poste": "Lead AI", "valeur_contact": None}],
+            "contacts": [{"nom": "Marie Petit", "poste": "Lead AI", "email": None}],
         }
         proposition = agent._normaliser_proposition(brute)
         self.assertEqual(proposition["entreprise"]["nom"], "AgentikCo")

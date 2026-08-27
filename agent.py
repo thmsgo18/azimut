@@ -66,9 +66,10 @@ SCHEMA_PROPOSITION = {
                 "properties": {
                     "nom": {"type": "string"},
                     "poste": {"type": ["string", "null"]},
-                    "valeur_contact": {"type": ["string", "null"]},
+                    "email": {"type": ["string", "null"]},
+                    "linkedin": {"type": ["string", "null"]},
                 },
-                "required": ["nom", "poste", "valeur_contact"],
+                "required": ["nom", "poste", "email", "linkedin"],
                 "additionalProperties": False,
             },
         },

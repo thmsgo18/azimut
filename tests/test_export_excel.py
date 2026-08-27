@@ -51,8 +51,7 @@ class TestExportExcel(unittest.TestCase):
             "AgentikCo",
             "Marie Petit",
             poste="Lead AI",
-            type_contact="Email",
-            valeur_contact="marie@agentik.co",
+            email="marie@agentik.co",
             chemin_db=cls.chemin_db,
         )
         cls.chemin_xlsx = str(Path(cls.dossier.name) / "export.xlsx")
@@ -93,7 +92,7 @@ class TestExportExcel(unittest.TestCase):
         ws_ent = self.wb["Entreprises"]
         self.assertIn("MATCH($A2,'Suivi candidatures'!$A:$A,0)", ws_ent["F2"].value)
         ws_contacts = self.wb["Contacts"]
-        self.assertIn("MATCH($A2,'Suivi candidatures'!$A:$A,0)", ws_contacts["K2"].value)
+        self.assertIn("MATCH($A2,'Suivi candidatures'!$A:$A,0)", ws_contacts["L2"].value)
 
     def test_listes_deroulantes(self):
         ws = self.wb["Suivi candidatures"]
@@ -104,7 +103,7 @@ class TestExportExcel(unittest.TestCase):
         self.assertIn("Haute,Moyenne,Basse", formules)
         self.assertIn("Présentiel,Hybride,Full remote", formules)
         ws_contacts = self.wb["Contacts"]
-        self.assertEqual(len(ws_contacts.data_validations.dataValidation), 3)
+        self.assertEqual(len(ws_contacts.data_validations.dataValidation), 2)
 
     def test_mise_en_forme_conditionnelle(self):
         ws = self.wb["Suivi candidatures"]
@@ -131,7 +130,7 @@ class TestExportExcel(unittest.TestCase):
         ws = self.wb["Contacts"]
         self.assertEqual(ws["A2"].value, "AgentikCo")
         self.assertEqual(ws["B2"].value, "Marie Petit")
-        self.assertEqual(ws["F2"].value, "marie@agentik.co")
+        self.assertEqual(ws["E2"].value, "marie@agentik.co")
 
     def test_tableau_de_bord_formules(self):
         ws = self.wb["Tableau de bord"]
@@ -145,7 +144,7 @@ class TestExportExcel(unittest.TestCase):
         self.assertEqual(ws["B13"].number_format, "0%")
         # Sections sous-domaines et contacts.
         self.assertIn('"Orchestration multi-agents"', ws["B17"].value)
-        self.assertIn("Contacts!$G$2", ws["B25"].value)
+        self.assertIn("Contacts!$H$2", ws["B25"].value)
 
     def test_export_relancable(self):
         # Relancer l'export ne perd rien : le fichier est régénéré depuis la base.
