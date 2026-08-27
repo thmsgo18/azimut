@@ -1,4 +1,4 @@
-"""Tests des notifications macOS proactives — aucun vrai osascript :
+"""Tests des notifications macOS proactives - aucun vrai osascript :
 subprocess.run est remplacé. Vérifie surtout la déduplication (un seul
 résumé de relances par jour, une seule notification par lien mort)."""
 

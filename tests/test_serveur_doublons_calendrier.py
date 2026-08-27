@@ -34,7 +34,7 @@ class TestApiDoublonsEtFusion(unittest.TestCase):
         self._ajouter_candidature()
         reponse = self.client.get(
             "/api/candidatures/similaires",
-            query_string={"entreprise": "AgentikCo", "poste": "Stage — Agents IA (H/F)"},
+            query_string={"entreprise": "AgentikCo", "poste": "Stage - Agents IA (H/F)"},
         )
         self.assertEqual(reponse.status_code, 200)
         resultats = reponse.get_json()
@@ -60,7 +60,7 @@ class TestApiDoublonsEtFusion(unittest.TestCase):
         # exact (entreprise+poste identiques) l'est, et c'est déjà couvert
         # par test_doublon_renvoie_400 dans test_serveur.py.
         self._ajouter_candidature()
-        reponse = self._ajouter_candidature(poste="Stage — Agents IA (H/F)")
+        reponse = self._ajouter_candidature(poste="Stage - Agents IA (H/F)")
         self.assertEqual(reponse.status_code, 201)
         liste = self.client.get("/api/candidatures").get_json()
         self.assertEqual(len(liste), 2)

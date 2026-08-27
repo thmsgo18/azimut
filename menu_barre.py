@@ -1,6 +1,6 @@
 """Widget de barre de menus macOS pour Azimut : un résumé (relances du jour,
 prochain entretien) sans ouvrir la fenêtre complète. Lit directement la base
-SQLite — fonctionne même si l'appli principale n'est pas lancée.
+SQLite - fonctionne même si l'appli principale n'est pas lancée.
 
 Se lance via double-clic sur « Azimut Widget.app » (pas d'icône dans le Dock,
 juste la barre de menus). Peut être ajouté aux éléments de connexion pour
@@ -60,7 +60,7 @@ class WidgetAzimut(rumps.App):
         if entretiens:
             prochain = entretiens[0]
             self.item_entretien.title = (
-                f"Prochain entretien : {prochain['entreprise']} — {_date_fr(prochain['date'])}"
+                f"Prochain entretien : {prochain['entreprise']} - {_date_fr(prochain['date'])}"
             )
         else:
             self.item_entretien.title = "Aucun entretien planifié"

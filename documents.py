@@ -1,7 +1,7 @@
 """Documents liés aux candidatures (CV, lettre de motivation, offre en PDF…).
 
 Les fichiers sont copiés dans le dossier « documents » choisi par
-l'utilisateur (réglage dossier_donnees — voir reglages.py), ou à défaut dans
+l'utilisateur (réglage dossier_donnees - voir reglages.py), ou à défaut dans
 documents/ à côté du code. La base ne stocke que les métadonnées et le chemin
 absolu. Ce dossier est exclu du zip de partage (fichiers personnels).
 """

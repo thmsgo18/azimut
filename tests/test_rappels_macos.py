@@ -1,4 +1,4 @@
-"""Tests du pont vers l'app Rappels (macOS) — aucun appel réel à osascript :
+"""Tests du pont vers l'app Rappels (macOS) - aucun appel réel à osascript :
 subprocess.run est remplacé, pour ne jamais faire apparaître de vraie
 fenêtre de permission ni créer de vrai rappel pendant les tests."""
 
@@ -103,11 +103,11 @@ class TestPousserEcheance(unittest.TestCase):
             "libelle": "Entretien", "entreprise": "AgentikCo", "poste": "Stage agents IA",
             "date": date.today().isoformat(),
         }
-        self.assertEqual(rm.titre_pour_echeance(echeance), "Entretien — AgentikCo")
+        self.assertEqual(rm.titre_pour_echeance(echeance), "Entretien - AgentikCo")
         with patch("subprocess.run", return_value=FauxResultat(0)) as espion:
             rm.pousser_echeance(echeance)
         script = espion.call_args[0][0][2]
-        self.assertIn("Entretien — AgentikCo", script)
+        self.assertIn("Entretien - AgentikCo", script)
 
 
 class TestPousserToutesLesEcheances(unittest.TestCase):

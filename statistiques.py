@@ -89,7 +89,7 @@ def _bornes_semaine(reference):
 def serie_hebdomadaire(chemin_db=None, nb_semaines=12):
     """Nombre de candidatures envoyées par semaine ISO (lundi-dimanche), sur
     les `nb_semaines` dernières semaines jusqu'à la semaine courante incluse.
-    Compte sur `date_envoi` — une candidature encore « À préparer » (sans
+    Compte sur `date_envoi` - une candidature encore « À préparer » (sans
     date d'envoi) ne compte pas comme une action de la semaine."""
     dates_envoi = sorted(
         c["date_envoi"] for c in lister_candidatures(chemin_db=chemin_db) if c["date_envoi"]

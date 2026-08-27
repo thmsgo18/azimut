@@ -167,7 +167,7 @@ class TestModulesNouveautes(unittest.TestCase):
         self.assertIn("BEGIN:VCALENDAR", ics)
         self.assertEqual(ics.count("BEGIN:VEVENT"), 2)
         self.assertIn("DTSTART;VALUE=DATE:20990115", ics)
-        self.assertIn("Entretien — AgentikCo", ics.replace("\\,", ","))
+        self.assertIn("Entretien - AgentikCo", ics.replace("\\,", ","))
         self.assertIn("BEGIN:VALARM", ics)
 
     # --- sauvegardes ---

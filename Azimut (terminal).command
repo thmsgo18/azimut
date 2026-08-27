@@ -4,7 +4,7 @@
 # Premier lancement : l'environnement Python est installé automatiquement.
 cd "$(dirname "$0")" || exit 1
 
-echo "Azimut — suivi de candidatures"
+echo "Azimut - suivi de candidatures"
 echo ""
 
 if [ ! -x "venv/bin/python" ]; then

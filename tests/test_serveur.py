@@ -104,7 +104,7 @@ class TestServeur(unittest.TestCase):
         numero = self._ajouter().get_json()["id"]
         fiche = self.client.get(f"/api/entretien/{numero}")
         self.assertEqual(fiche.status_code, 200)
-        self.assertIn("Préparation d'entretien — AgentikCo", fiche.get_json()["markdown"])
+        self.assertIn("Préparation d'entretien - AgentikCo", fiche.get_json()["markdown"])
         telechargement = self.client.get(f"/api/entretien/{numero}/telecharger")
         self.assertEqual(telechargement.status_code, 200)
         self.assertIn("text/markdown", telechargement.headers["Content-Type"])

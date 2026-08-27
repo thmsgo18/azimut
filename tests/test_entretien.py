@@ -50,7 +50,7 @@ class TestFicheEntretien(unittest.TestCase):
         )
         fiche = generer_fiche_entretien(numero, chemin_db=self.chemin_db)
         # 1. En-tête
-        self.assertIn("# Préparation d'entretien — AgentikCo", fiche)
+        self.assertIn("# Préparation d'entretien - AgentikCo", fiche)
         self.assertIn("**Poste :** Stage agents IA", fiche)
         self.assertIn("**Date de l'entretien :** 05/09/2026", fiche)
         self.assertIn("Paris / Hybride", fiche)

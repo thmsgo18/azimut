@@ -1,4 +1,4 @@
-"""Tests du widget de barre de menus (menu_barre.py) — instancié sans lancer
+"""Tests du widget de barre de menus (menu_barre.py) - instancié sans lancer
 la boucle GUI (jamais .run()), en pointant db.CHEMIN_DB vers une base
 temporaire (le widget lit toujours la base par défaut, sans chemin_db)."""
 

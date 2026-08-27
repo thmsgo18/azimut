@@ -1,4 +1,4 @@
-"""Tests de la capture rapide (rapide.py) — brouillon depuis un Raccourci."""
+"""Tests de la capture rapide (rapide.py) - brouillon depuis un Raccourci."""
 
 import sys
 import tempfile

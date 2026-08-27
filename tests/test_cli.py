@@ -44,7 +44,7 @@ class TestCli(unittest.TestCase):
 
         fiche = self._cli("entretien", "preparer", "1")
         self.assertEqual(fiche.returncode, 0)
-        self.assertIn("Préparation d'entretien — AgentikCo", fiche.stdout)
+        self.assertIn("Préparation d'entretien - AgentikCo", fiche.stdout)
 
     def test_doublon_code_retour_1(self):
         self._cli("candidatures", "ajouter", "--entreprise", "AgentikCo", "--poste", "Stage")

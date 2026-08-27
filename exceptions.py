@@ -1,4 +1,4 @@
-"""Exceptions du suivi de candidatures — toutes portent un message en français."""
+"""Exceptions du suivi de candidatures - toutes portent un message en français."""
 
 
 class ErreurSuivi(Exception):

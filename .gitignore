@@ -1,4 +1,4 @@
-# Base de données — jamais versionnée (données personnelles)
+# Base de données, jamais versionnée (données personnelles)
 *.db
 *.db-journal
 *.db-wal
@@ -19,7 +19,7 @@ __pycache__/
 # Fichiers CSV téléversés le temps d'un import (nettoyés automatiquement)
 /import_temp/
 
-# État local des notifications proactives (widget) — pas une donnée métier
+# État local des notifications proactives (widget), pas une donnée métier
 /notifications_etat.json
 
 # Fichiers macOS

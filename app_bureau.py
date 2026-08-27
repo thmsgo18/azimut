@@ -21,7 +21,7 @@ from serveur import app
 
 
 def _port_libre():
-    """Réserve un port local pour le serveur interne — de préférence toujours
+    """Réserve un port local pour le serveur interne - de préférence toujours
     le même (PORT_PREFERE) : un abonnement de calendrier (webcal://) pointe
     vers ce port, il doit rester valide d'un lancement à l'autre. Ne bascule
     sur un port éphémère que si ce port est déjà pris (rare : un autre
@@ -77,7 +77,7 @@ def _habiller_application_macos():
 
 
 class ApiBureau:
-    """Pont exposé au JavaScript de l'interface (window.pywebview.api.…) —
+    """Pont exposé au JavaScript de l'interface (window.pywebview.api.…),
     tout ce qui a besoin d'une fenêtre native macOS (sélecteur de dossier)
     passe par ici plutôt que par le serveur Flask, qui n'a pas de fenêtre."""
 
@@ -102,7 +102,7 @@ class ApiBureau:
 def _demarrer_compagnon_si_active():
     """Vue compagnon (lecture seule, iPhone/iPad) : un second serveur Flask,
     séparé du principal, écoutant sur toutes les interfaces réseau (pas
-    seulement 127.0.0.1) — uniquement si activée dans Réglages. Le serveur
+    seulement 127.0.0.1) - uniquement si activée dans Réglages. Le serveur
     principal, lui, n'écoute jamais que sur 127.0.0.1."""
     import reglages
 
@@ -120,7 +120,7 @@ def _demarrer_compagnon_si_active():
 
 def _verification_liens_en_arriere_plan():
     """Vérifie périodiquement les liens d'offres tant qu'Azimut est ouvert
-    (toutes les 6h) — best effort : une erreur réseau ne doit jamais faire
+    (toutes les 6h) - best effort : une erreur réseau ne doit jamais faire
     planter l'appli, elle est simplement ignorée jusqu'au prochain passage."""
     import verification_liens
 
@@ -171,7 +171,7 @@ def principal():
     # Autorise les téléchargements (export Excel, fiche .md) depuis la fenêtre.
     webview.settings["ALLOW_DOWNLOADS"] = True
     webview.create_window(
-        "Azimut — suivi de candidatures",
+        "Azimut - suivi de candidatures",
         url,
         width=1280,
         height=840,

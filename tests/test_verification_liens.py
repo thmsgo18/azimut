@@ -1,4 +1,4 @@
-"""Tests de la détection de liens d'offres morts — aucun appel réseau réel :
+"""Tests de la détection de liens d'offres morts - aucun appel réseau réel :
 urllib.request.urlopen est remplacé par un faux serveur en mémoire."""
 
 import sys

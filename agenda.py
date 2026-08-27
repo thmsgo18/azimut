@@ -51,13 +51,13 @@ def generer_ics(chemin_db=None, inclure_passees=False):
         "VERSION:2.0",
         "PRODID:-//Azimut//Suivi de candidatures//FR",
         "CALSCALE:GREGORIAN",
-        "X-WR-CALNAME:Azimut — candidatures",
+        "X-WR-CALNAME:Azimut - candidatures",
     ]
     for echeance in lister_echeances(chemin_db=chemin_db):
         if not inclure_passees and echeance["date"] < aujourd_hui:
             continue
         jour = echeance["date"].replace("-", "")
-        titre = f"{echeance['libelle']} — {echeance['entreprise']}"
+        titre = f"{echeance['libelle']} - {echeance['entreprise']}"
         lignes += [
             "BEGIN:VEVENT",
             f"UID:azimut-{echeance['type']}-{echeance['candidature_id']}-{jour}@local",

@@ -1,12 +1,12 @@
 """Pousse une échéance vers l'app Rappels de macOS, en complément du
-calendrier (agenda.py / webcal). Passe par AppleScript (osascript) — la toute
+calendrier (agenda.py / webcal). Passe par AppleScript (osascript) - la toute
 première utilisation demande à macOS la permission d'automatiser Rappels
 (fenêtre système), à accorder une fois.
 
 La date est calculée comme un décalage en jours par rapport à aujourd'hui
 plutôt que parsée comme une chaîne littérale : AppleScript interprète les
 dates selon le calendrier/la langue du système, ce qui rend un format écrit
-(« 26/08/2026 ») fragile d'une machine à l'autre — un décalage entier ne l'est
+(« 26/08/2026 ») fragile d'une machine à l'autre - un décalage entier ne l'est
 jamais.
 """
 
@@ -31,14 +31,14 @@ def _executer_applescript(script):
             capture_output=True, text=True, timeout=DELAI_APPLESCRIPT,
         )
     except FileNotFoundError:
-        raise ErreurSuivi("osascript introuvable — cette fonction n'existe que sur macOS.")
+        raise ErreurSuivi("osascript introuvable - cette fonction n'existe que sur macOS.")
     except subprocess.TimeoutExpired:
-        raise ErreurSuivi("L'app Rappels n'a pas répondu à temps — réessayer.")
+        raise ErreurSuivi("L'app Rappels n'a pas répondu à temps - réessayer.")
     if resultat.returncode != 0:
         message = resultat.stderr.strip() or "erreur inconnue"
         if "-1743" in message or "not allowed" in message.lower():
             raise ErreurSuivi(
-                "Azimut n'a pas la permission d'automatiser Rappels — l'accorder dans "
+                "Azimut n'a pas la permission d'automatiser Rappels - l'accorder dans "
                 "Réglages Système → Confidentialité et sécurité → Automatisation, "
                 "puis réessayer."
             )
@@ -75,7 +75,7 @@ def creer_rappel(titre, notes, date_echeance_iso, liste=LISTE_PAR_DEFAUT):
 
 
 def titre_pour_echeance(echeance):
-    return f"{echeance['libelle']} — {echeance['entreprise']}"
+    return f"{echeance['libelle']} - {echeance['entreprise']}"
 
 
 def pousser_echeance(echeance):
@@ -86,7 +86,7 @@ def pousser_echeance(echeance):
 def pousser_toutes_les_echeances(chemin_db=None):
     """Pousse toutes les échéances à venir vers Rappels. Retourne un résumé :
     {reussies, echouees, erreurs: [...]}. Ne s'arrête pas à la première erreur
-    (ex. une seule date invalide) — best effort sur l'ensemble de la liste."""
+    (ex. une seule date invalide) - best effort sur l'ensemble de la liste."""
     import agenda
 
     resume = {"reussies": 0, "echouees": 0, "erreurs": []}
@@ -96,7 +96,7 @@ def pousser_toutes_les_echeances(chemin_db=None):
             resume["reussies"] += 1
         except ErreurSuivi as erreur:
             resume["echouees"] += 1
-            resume["erreurs"].append(f"{echeance['entreprise']} — {echeance['libelle']} : {erreur}")
+            resume["erreurs"].append(f"{echeance['entreprise']} - {echeance['libelle']} : {erreur}")
             if "permission" in str(erreur).lower():
                 break  # inutile de retenter 30 fois le même refus de permission
     return resume

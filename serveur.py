@@ -87,7 +87,7 @@ def _erreur_imprevue(erreur):
 
     traceback.print_exc()
     return (
-        jsonify({"erreur": "Erreur interne inattendue — les données n'ont pas été perdues. "
+        jsonify({"erreur": "Erreur interne inattendue - les données n'ont pas été perdues. "
                            f"Détail : {erreur}"}),
         500,
     )
@@ -175,13 +175,13 @@ def api_candidatures_relancer(numero):
 @app.route("/api/relances")
 def api_relances():
     """Liste complète (non plafonnée) des relances à faire, triée par
-    urgence — utilisée par la vue dédiée « Relances »."""
+    urgence - utilisée par la vue dédiée « Relances »."""
     return jsonify(candidatures.lister_relances_a_faire())
 
 
 @app.route("/api/candidatures/similaires")
 def api_candidatures_similaires():
-    """Quasi-doublons : intitulés proches ou même lien d'offre — un simple
+    """Quasi-doublons : intitulés proches ou même lien d'offre - un simple
     avertissement, jamais un blocage (le doublon exact, lui, est déjà refusé
     par ajouter_candidature)."""
     return jsonify(
@@ -439,7 +439,7 @@ def api_reglages_modifier():
 def api_compagnon_reglages():
     """Active/désactive la vue compagnon et/ou régénère son code d'accès.
     Le second serveur (compagnon.py) n'est démarré/arrêté qu'au prochain
-    lancement d'Azimut — comme le dossier de données, un réglage structurel
+    lancement d'Azimut - comme le dossier de données, un réglage structurel
     n'a pas besoin de prendre effet à chaud."""
     import compagnon
 
@@ -547,7 +547,7 @@ def api_agenda():
 
 @app.route("/api/agenda/ics")
 def api_agenda_ics():
-    """Téléchargement ponctuel — pour import manuel (Google Agenda, Outlook…)."""
+    """Téléchargement ponctuel - pour import manuel (Google Agenda, Outlook…)."""
     contenu = agenda.generer_ics()
     return send_file(
         io.BytesIO(contenu.encode("utf-8")),
@@ -590,7 +590,7 @@ def api_rappels_tout_pousser():
 def api_sauvegarde():
     chemin = sauvegarde.sauvegarder_base()
     if chemin is None:
-        raise ValeurNonAutorisee("La base est vide ou introuvable — rien à sauvegarder.")
+        raise ValeurNonAutorisee("La base est vide ou introuvable - rien à sauvegarder.")
     return jsonify({"chemin": chemin, "sauvegardes": sauvegarde.lister_sauvegardes()[:5]})
 
 
@@ -598,7 +598,7 @@ def api_sauvegarde():
 def api_import_excel():
     fichier = request.files.get("fichier")
     if fichier is None or not fichier.filename:
-        raise ValeurNonAutorisee("Aucun fichier reçu — choisir un export Excel (.xlsx).")
+        raise ValeurNonAutorisee("Aucun fichier reçu - choisir un export Excel (.xlsx).")
     with tempfile.TemporaryDirectory() as dossier:
         chemin = Path(dossier) / "import.xlsx"
         fichier.save(chemin)
@@ -611,7 +611,7 @@ JETON_RE = re.compile(r"[0-9a-f]{16}")
 
 
 def _nettoyer_import_temp():
-    """Supprime les fichiers CSV temporaires vieux de plus d'une heure —
+    """Supprime les fichiers CSV temporaires vieux de plus d'une heure,
     au cas où un aperçu n'a jamais été confirmé."""
     if not DOSSIER_IMPORT_TEMP.exists():
         return
@@ -628,7 +628,7 @@ def _nettoyer_import_temp():
 def api_import_csv_apercu():
     fichier = request.files.get("fichier")
     if fichier is None or not fichier.filename:
-        raise ValeurNonAutorisee("Aucun fichier reçu — choisir un export CSV (.csv).")
+        raise ValeurNonAutorisee("Aucun fichier reçu - choisir un export CSV (.csv).")
     DOSSIER_IMPORT_TEMP.mkdir(exist_ok=True)
     _nettoyer_import_temp()
     jeton = secrets.token_hex(8)
@@ -650,7 +650,7 @@ def api_import_csv_confirmer():
         raise ValeurNonAutorisee("Jeton d'import manquant ou invalide.")
     chemin = DOSSIER_IMPORT_TEMP / f"{jeton}.csv"
     if not chemin.exists():
-        raise ValeurNonAutorisee("Fichier d'import introuvable ou expiré — reteléverser le CSV.")
+        raise ValeurNonAutorisee("Fichier d'import introuvable ou expiré - reteléverser le CSV.")
     correspondance = {
         champ: entete
         for champ, entete in (donnees.get("correspondance") or {}).items()
@@ -691,5 +691,5 @@ if __name__ == "__main__":
             print(f"Sauvegarde automatique : {chemin_copie}")
     except OSError as erreur:
         print(f"Sauvegarde automatique impossible : {erreur}")
-    print(f"Azimut — appli disponible sur http://localhost:{PORT}")
+    print(f"Azimut - appli disponible sur http://localhost:{PORT}")
     app.run(host="127.0.0.1", port=PORT, debug=False)

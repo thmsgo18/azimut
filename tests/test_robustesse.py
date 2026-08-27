@@ -106,7 +106,7 @@ class TestServeurRobustesse(unittest.TestCase):
     def test_unicode_et_accents(self):
         creation = self.client.post(
             "/api/candidatures",
-            json={"entreprise": "Šürprise Ïñc", "poste": "Stage — évals ✎ 日本語"},
+            json={"entreprise": "Šürprise Ïñc", "poste": "Stage - évals ✎ 日本語"},
         )
         self.assertEqual(creation.status_code, 201)
         self.assertEqual(creation.get_json()["entreprise"], "Šürprise Ïñc")

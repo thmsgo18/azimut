@@ -111,7 +111,7 @@ def _ajouter_validation(ws, colonne, valeurs, premiere_ligne, ligne_max):
         allow_blank=True,
         showErrorMessage=True,
     )
-    dv.error = "Valeur non autorisée — choisir dans la liste déroulante."
+    dv.error = "Valeur non autorisée - choisir dans la liste déroulante."
     dv.errorTitle = "Valeur non autorisée"
     ws.add_data_validation(dv)
     dv.add(f"{colonne}{premiere_ligne}:{colonne}{ligne_max}")
@@ -279,7 +279,7 @@ def _onglet_entreprises(wb, liste, ligne_max, ligne_max_suivi):
             column=6,
             value=(
                 "=IFERROR(HYPERLINK(\"#'Suivi candidatures'!A\"&"
-                f"MATCH($A{ligne},'Suivi candidatures'!$A:$A,0),\"→ Candidatures\"),\"—\")"
+                f"MATCH($A{ligne},'Suivi candidatures'!$A:$A,0),\"→ Candidatures\"),\"(aucune)\")"
             ),
         )
         lien.font = POLICE_LIEN
@@ -346,7 +346,7 @@ def _onglet_tableau_de_bord(wb, ligne_max_suivi, ligne_max_contacts):
     ws.column_dimensions["D"].width = 70
 
     titre = ws["A1"]
-    titre.value = "Tableau de bord — candidatures stage"
+    titre.value = "Tableau de bord - candidatures stage"
     titre.font = Font(name="Arial", size=14, bold=True, color=BLEU_ENTETE)
     ws.merge_cells("A1:B1")
     ws.row_dimensions[1].height = 17.35
@@ -399,7 +399,7 @@ def _onglet_tableau_de_bord(wb, ligne_max_suivi, ligne_max_contacts):
     conseils = [
         "1. Ce fichier est généré automatiquement depuis la base de données "
         "(suivi_candidatures.db) : la base reste la seule source de vérité.",
-        "2. Ne pas le modifier à la main — toute modification sera perdue au prochain export.",
+        "2. Ne pas le modifier à la main - toute modification sera perdue au prochain export.",
         "3. Pour ajouter ou corriger une ligne : passer par la CLI (python cli.py ...) "
         "ou par Claude Code, puis relancer « export excel ».",
         "4. La ligne 2 (fond jaune, italique) de « Suivi candidatures » est un exemple de format.",

@@ -167,7 +167,7 @@ def _options_contact(parseur, avec_nom_option):
 def construire_analyseur():
     analyseur = AnalyseurFr(
         prog="python cli.py",
-        description="Suivi de candidatures de stage — base locale SQLite, tout en français.",
+        description="Suivi de candidatures de stage - base locale SQLite, tout en français.",
     )
     analyseur.add_argument("--db", dest="chemin_db", help="Chemin de la base (défaut : suivi_candidatures.db)")
     sections = analyseur.add_subparsers(dest="section", required=True, metavar="section")
@@ -308,8 +308,8 @@ def executer(args):
             for similaire in similaires:
                 print(
                     f"⚠ Ressemble à la candidature n°{similaire['id']} "
-                    f"({similaire['entreprise']} — {similaire['poste']}, "
-                    f"{'/'.join(similaire['raisons'])}) — création quand même.",
+                    f"({similaire['entreprise']} - {similaire['poste']}, "
+                    f"{'/'.join(similaire['raisons'])}) - création quand même.",
                     file=sys.stderr,
                 )
             numero = candidatures.ajouter_candidature(
@@ -369,7 +369,7 @@ def executer(args):
         elif args.action == "relancer":
             cand = candidatures.marquer_relance(args.id, chemin_db=chemin_db)
             print(f"✓ Relance n°{cand['nb_relances']} enregistrée pour la candidature n°{args.id} "
-                  f"({cand['entreprise']} — {cand['poste']}), statut : {cand['statut']}.")
+                  f"({cand['entreprise']} - {cand['poste']}), statut : {cand['statut']}.")
         elif args.action == "relances":
             liste = candidatures.lister_relances_a_faire(chemin_db=chemin_db)
             if not liste:
@@ -418,7 +418,7 @@ def executer(args):
                     f"n°{paire['a']['id']} « {paire['a']['nom']} »  ↔  "
                     f"n°{paire['b']['id']} « {paire['b']['nom']} »  ({pourcentage}% proche)"
                 )
-            print(f"\n{len(paires)} paire(s) — voir « entreprises fusionner <conserver> <supprimer> ».")
+            print(f"\n{len(paires)} paire(s) - voir « entreprises fusionner <conserver> <supprimer> ».")
         elif args.action == "fusionner":
             resultat = entreprises.fusionner_entreprises(
                 args.conserver, args.supprimer, chemin_db=chemin_db

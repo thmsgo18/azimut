@@ -113,7 +113,7 @@ def _migrer_contacts_champs_separes(conn):
     """Ancienne version : un couple générique (type_contact, valeur_contact).
     Nouvelle version : un champ dédié par type de coordonnée (email,
     telephone, linkedin). Migration ponctuelle : déclenchée par la présence
-    des anciennes colonnes, qui sont supprimées à la fin — ce code ne
+    des anciennes colonnes, qui sont supprimées à la fin - ce code ne
     s'exécute donc plus jamais après la première base migrée."""
     colonnes = {ligne[1] for ligne in conn.execute("PRAGMA table_info(contacts)")}
     if "type_contact" not in colonnes:

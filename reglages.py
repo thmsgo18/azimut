@@ -76,7 +76,7 @@ def definir_dossier_donnees(chemin, chemin_db=None):
 
     `chemin` vide ou None = retour à l'emplacement par défaut (à côté du code).
     Les fichiers déjà présents dans l'ancien emplacement ne sont PAS déplacés
-    automatiquement — seuls les futurs écrits vont dans le nouveau dossier.
+    automatiquement - seuls les futurs écrits vont dans le nouveau dossier.
     """
     if not chemin or not str(chemin).strip():
         definir_reglage("dossier_donnees", None, chemin_db=chemin_db)
@@ -93,7 +93,7 @@ def definir_dossier_donnees(chemin, chemin_db=None):
 
 
 def code_compagnon(chemin_db=None, regenerer=False):
-    """Code d'accès à la vue compagnon (lecture seule, réseau local) — généré
+    """Code d'accès à la vue compagnon (lecture seule, réseau local) - généré
     une seule fois puis stable, à moins de forcer une régénération."""
     code = None if regenerer else obtenir_reglage("compagnon_code", chemin_db=chemin_db)
     if not code:
@@ -103,7 +103,7 @@ def code_compagnon(chemin_db=None, regenerer=False):
 
 
 def etat_reglages(chemin_db=None):
-    """État des réglages pour l'interface — la clé API n'apparaît que masquée."""
+    """État des réglages pour l'interface - la clé API n'apparaît que masquée."""
     cle_api = obtenir_reglage("cle_api", chemin_db=chemin_db)
     dossier = obtenir_reglage("dossier_donnees", chemin_db=chemin_db)
     return {

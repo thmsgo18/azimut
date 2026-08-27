@@ -1,9 +1,9 @@
 """Capture rapide : crée un brouillon de candidature depuis un lien et/ou un
-texte d'offre reçus d'un déclencheur externe — typiquement un Raccourci macOS
+texte d'offre reçus d'un déclencheur externe - typiquement un Raccourci macOS
 qui envoie la page Safari courante vers Azimut (voir README pour la recette).
 
 Toujours un brouillon explicite (statut « À préparer », notes qui disent
-d'où ça vient) à compléter dans l'appli — jamais une candidature pleinement
+d'où ça vient) à compléter dans l'appli - jamais une candidature pleinement
 renseignée sans relecture, conformément à la règle d'or du projet.
 """
 
@@ -13,11 +13,11 @@ import reglages
 from candidatures import ajouter_candidature
 from exceptions import ValeurNonAutorisee
 
-NOTE_ORIGINE = "Créée automatiquement depuis un Raccourci (Safari) — à vérifier et compléter."
+NOTE_ORIGINE = "Créée automatiquement depuis un Raccourci (Safari) - à vérifier et compléter."
 
 
 def _nom_depuis_url(url):
-    """Nom d'entreprise provisoire déduit du domaine — jamais une invention
+    """Nom d'entreprise provisoire déduit du domaine - jamais une invention
     de fait, juste un point de départ visible et honnête (ex. « Agentik »
     pour agentik.co) que l'utilisateur corrige dans l'appli."""
     hote = urlsplit(url).netloc.removeprefix("www.")
@@ -29,7 +29,7 @@ def creer_brouillon(lien=None, texte=None, chemin_db=None):
     """Crée une candidature brouillon depuis un lien et/ou un texte d'offre.
 
     Si une clé IA est configurée et qu'un texte est fourni, tente une
-    extraction via agent.py pour un meilleur intitulé/entreprise — en cas
+    extraction via agent.py pour un meilleur intitulé/entreprise - en cas
     d'échec (ou sans clé), retombe sur un nom d'entreprise déduit de l'URL et
     un intitulé générique, sans jamais inventer de fait.
     """

@@ -1,12 +1,12 @@
 """Import Excel : relit un fichier généré par export_excel et réinjecte les
-données dans la base — utile pour restaurer une sauvegarde ou fusionner.
+données dans la base - utile pour restaurer une sauvegarde ou fusionner.
 
 Règles :
 - toutes les écritures passent par les fonctions métier (jamais de SQL direct) ;
 - une ligne déjà présente (doublon entreprise+poste ou entreprise+contact) est
   ignorée et signalée, jamais écrasée ;
 - une ligne invalide (valeur hors liste, date impossible) est ignorée et
-  signalée avec son numéro de ligne — le reste du fichier est importé ;
+  signalée avec son numéro de ligne - le reste du fichier est importé ;
 - les identifiants/mots de passe de portail ne figurent pas dans les exports :
   la sauvegarde complète reste le fichier suivi_candidatures.db.
 """
@@ -171,7 +171,7 @@ def importer_excel(chemin_fichier, chemin_db=None):
         except ConflitMiseAJour:
             rapport["ignores"].append(
                 f"Entreprises ligne {numero} : « {nom} » existe déjà avec des infos "
-                "différentes — rien n'a été écrasé."
+                "différentes - rien n'a été écrasé."
             )
         except ErreurSuivi as erreur:
             rapport["erreurs"].append(f"Entreprises ligne {numero} : {erreur}")
@@ -183,7 +183,7 @@ def importer_excel(chemin_fichier, chemin_db=None):
         poste = valeurs.pop("poste", None)
         if not entreprise or not poste:
             rapport["erreurs"].append(
-                f"Candidatures ligne {numero} : entreprise ou poste manquant — ligne ignorée."
+                f"Candidatures ligne {numero} : entreprise ou poste manquant - ligne ignorée."
             )
             continue
         try:
@@ -204,7 +204,7 @@ def importer_excel(chemin_fichier, chemin_db=None):
         nom = valeurs.pop("nom", None)
         if not entreprise or not nom:
             rapport["erreurs"].append(
-                f"Contacts ligne {numero} : entreprise ou nom manquant — ligne ignorée."
+                f"Contacts ligne {numero} : entreprise ou nom manquant - ligne ignorée."
             )
             continue
         try:

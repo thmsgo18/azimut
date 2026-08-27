@@ -134,7 +134,7 @@ class TestExportExcel(unittest.TestCase):
 
     def test_tableau_de_bord_formules(self):
         ws = self.wb["Tableau de bord"]
-        self.assertEqual(ws["A1"].value, "Tableau de bord — candidatures stage")
+        self.assertEqual(ws["A1"].value, "Tableau de bord - candidatures stage")
         # Compteurs par statut via COUNTIF (aucune valeur en dur).
         self.assertIn('=COUNTIF(', ws["B4"].value)
         self.assertIn('"À préparer"', ws["B4"].value)

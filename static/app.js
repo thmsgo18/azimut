@@ -1,4 +1,4 @@
-/* Azimut — suivi de candidatures de stage.
+/* Azimut - suivi de candidatures de stage.
    Interface 100 % locale : toutes les écritures passent par l'API du serveur,
    qui elle-même passe par les fonctions métier (jamais de SQL direct). */
 
@@ -21,7 +21,7 @@ const etat = {
   selectionComparaison: new Set(),  // ids cochés en vue liste, pour le comparateur
 };
 
-/* Couleurs par type d'objet (recherche) et par type d'échéance (agenda) —
+/* Couleurs par type d'objet (recherche) et par type d'échéance (agenda),
    toujours accompagnées d'un libellé texte, jamais la couleur seule. */
 const COULEURS_TYPE = {
   candidature: "var(--accent)",
@@ -62,7 +62,7 @@ function echapper(texte) {
   return div.innerHTML;
 }
 
-/* echapper() protège le contenu texte (<, >, &) mais pas les guillemets —
+/* echapper() protège le contenu texte (<, >, &) mais pas les guillemets,
    sans conséquence tant qu'on écrit dans du texte, mais une valeur insérée
    dans un attribut HTML="..." doit AUSSI échapper " (sinon l'attribut se
    referme prématurément au premier guillemet, ex. du JSON stringifié). */
@@ -94,7 +94,7 @@ async function api(chemin, options = {}) {
       body: options.corps ? JSON.stringify(options.corps) : undefined,
     });
   } catch {
-    throw new Error("Le serveur interne ne répond plus — fermer puis relancer Azimut.");
+    throw new Error("Le serveur interne ne répond plus - fermer puis relancer Azimut.");
   }
   let donnees = null;
   try { donnees = await reponse.json(); } catch { /* réponse vide */ }
@@ -304,7 +304,7 @@ function carteCandidature(cand) {
 }
 
 function optionsSelect(liste, selection, avecVide = true) {
-  const vide = avecVide ? `<option value="">—</option>` : "";
+  const vide = avecVide ? `<option value="">-</option>` : "";
   return vide + liste
     .map((v) => `<option value="${echapper(v)}"${v === selection ? " selected" : ""}>${echapper(v)}</option>`)
     .join("");
@@ -542,7 +542,7 @@ async function vueRelances() {
       <div class="ligne-relance${enRetard ? " en-retard" : ""}">
         <div class="ligne-relance-info" onclick="ouvrirDetailCandidature(${cand.id})">
           <div class="ligne-relance-titre">
-            <strong>${echapper(cand.entreprise)}</strong> — ${echapper(cand.poste)}
+            <strong>${echapper(cand.entreprise)}</strong> - ${echapper(cand.poste)}
             ${cand.priorite === "Haute" ? `<span class="puce puce-priorite-Haute">Priorité haute</span>` : ""}
           </div>
           <div class="cellule-secondaire">
@@ -607,7 +607,7 @@ async function vueComparateur() {
   const toutes = await api("/api/candidatures");
   const selection = ids.map((id) => toutes.find((c) => c.id === id)).filter(Boolean);
   const formater = (cle, valeur) => {
-    if (valeur === null || valeur === undefined || valeur === "") return "—";
+    if (valeur === null || valeur === undefined || valeur === "") return "-";
     if (cle === "gratification") return `${valeur} €/mois`;
     if (cle.startsWith("date_")) return dateFr(valeur);
     return echapper(valeur);
@@ -703,7 +703,7 @@ function champAffiche(libelle, contenuHTML, pleineLargeur = false) {
   return `
     <div class="champ${pleineLargeur ? " pleine-largeur" : ""}">
       <label>${libelle}</label>
-      <div class="valeur-affichee${vide ? " vide" : ""}">${vide ? "—" : contenuHTML}</div>
+      <div class="valeur-affichee${vide ? " vide" : ""}">${vide ? "-" : contenuHTML}</div>
     </div>`;
 }
 
@@ -785,7 +785,7 @@ async function ouvrirFormCandidature(cand = null) {
       ? `
       <div class="zone-ia">
         <label for="ia-texte">Pré-remplir depuis une offre (IA)</label>
-        <textarea id="ia-texte" placeholder="Colle ici le texte complet de l'offre — l'IA propose, tu relis, rien n'est enregistré sans toi."></textarea>
+        <textarea id="ia-texte" placeholder="Colle ici le texte complet de l'offre - l'IA propose, tu relis, rien n'est enregistré sans toi."></textarea>
         <div class="zone-ia-actions">
           <input type="url" id="ia-lien" placeholder="Lien de l'offre (optionnel)">
           <button type="button" class="btn btn-accent" id="btn-analyser">Analyser</button>
@@ -798,7 +798,7 @@ async function ouvrirFormCandidature(cand = null) {
   }
 
   // À la création : joindre tout de suite un ou plusieurs fichiers (offre en
-  // PDF, CV, lettre…) — envoyés juste après la création de la candidature.
+  // PDF, CV, lettre…) - envoyés juste après la création de la candidature.
   let zoneDocuments = "";
   if (creation) {
     zoneDocuments = `
@@ -830,7 +830,7 @@ async function ouvrirFormCandidature(cand = null) {
        <button class="btn btn-accent" id="btn-enregistrer">Enregistrer</button>`;
 
   ouvrirPanneau(
-    creation ? "Nouvelle candidature" : `${cand.entreprise} — modifier`,
+    creation ? "Nouvelle candidature" : `${cand.entreprise} - modifier`,
     zoneIA + corps + zoneDocuments + sectionsSupplementaires,
     pied
   );
@@ -852,7 +852,7 @@ async function ouvrirFormCandidature(cand = null) {
           remplirDepuisProposition(proposition);
           etat.propositionEntreprise = proposition.entreprise && proposition.entreprise.nom
             ? proposition.entreprise : null;
-          toast("Formulaire pré-rempli — relis et corrige avant d'ajouter.");
+          toast("Formulaire pré-rempli - relis et corrige avant d'ajouter.");
           if (proposition.avertissement) toast(proposition.avertissement, true);
         } catch (erreur) {
           toast(erreur.message, true);
@@ -1049,7 +1049,7 @@ async function ouvrirDetailCandidature(numero) {
       <button class="btn" id="btn-fiche">Fiche entretien</button>
       <button class="btn" id="btn-mode-entretien">Mode entretien</button>
       <button class="btn btn-accent" id="btn-modifier">Modifier</button>`;
-    ouvrirPanneau(`${cand.poste} — ${cand.entreprise}`, corps, pied);
+    ouvrirPanneau(`${cand.poste} - ${cand.entreprise}`, corps, pied);
 
     document.getElementById("btn-modifier").addEventListener("click", () => ouvrirFormCandidature(cand));
     document.getElementById("btn-fiche").addEventListener("click", () => ouvrirFicheEntretien(cand.id));
@@ -1066,7 +1066,7 @@ async function ouvrirDetailCandidature(numero) {
           const resultat = await api(`/api/agent/relance/${numero}`, { methode: "POST", corps: {} });
           ouvrirModale(
             "Brouillon de relance",
-            `<p class="sous-titre">À relire avant d'envoyer — rien n'est envoyé automatiquement.</p>
+            `<p class="sous-titre">À relire avant d'envoyer - rien n'est envoyé automatiquement.</p>
              <textarea id="texte-brouillon-relance" style="min-height:220px;" readonly>${echapper(resultat.texte)}</textarea>`,
             `<button class="btn" onclick="fermerModale()">Fermer</button>
              <button class="btn btn-accent" id="btn-copier-relance">Copier</button>`
@@ -1118,7 +1118,7 @@ async function vueEntreprises() {
     <div class="carte carte-entreprise" onclick="ouvrirDetailEntreprise(${ent.id})">
       <div class="nom">${echapper(ent.nom)}</div>
       ${ent.site_web ? `<a class="site" href="${echapper(ent.site_web)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">${echapper(ent.site_web)}</a>` : ""}
-      <div class="contexte">${echapper(ent.contexte_actus || "Pas encore de contexte — ajoute le résultat de tes recherches (actus, missions, équipe).")}</div>
+      <div class="contexte">${echapper(ent.contexte_actus || "Pas encore de contexte - ajoute le résultat de tes recherches (actus, missions, équipe).")}</div>
       <div class="compteurs">
         <span class="puce">${ent.nb_candidatures} candidature${ent.nb_candidatures > 1 ? "s" : ""}</span>
         <span class="puce">${ent.nb_contacts} contact${ent.nb_contacts > 1 ? "s" : ""}</span>
@@ -1164,7 +1164,7 @@ async function ouvrirFusionEntreprises() {
     const bouton = (garder, fusionner) => `
       <button type="button" class="btn btn-fusion" data-conserver="${garder.id}" data-supprimer="${fusionner.id}">
         Garder « ${echapper(garder.nom)} »
-        <span class="cellule-secondaire">(${garder.nb_candidatures ?? 0} cand., ${garder.nb_contacts ?? 0} contact) — fusionner « ${echapper(fusionner.nom)} » dedans</span>
+        <span class="cellule-secondaire">(${garder.nb_candidatures ?? 0} cand., ${garder.nb_contacts ?? 0} contact) - fusionner « ${echapper(fusionner.nom)} » dedans</span>
       </button>`;
     return `
       <div class="paire-fusion">
@@ -1227,7 +1227,7 @@ async function ouvrirFormEntreprise(numero = null) {
        <button class="btn btn-accent" id="btn-enregistrer">Ajouter l'entreprise</button>`
     : `<button class="btn btn-danger" id="btn-supprimer">Supprimer</button>
        <button class="btn btn-accent" id="btn-enregistrer">Enregistrer</button>`;
-  ouvrirPanneau(creation ? "Nouvelle entreprise" : `${ent.nom} — modifier`, corps, pied);
+  ouvrirPanneau(creation ? "Nouvelle entreprise" : `${ent.nom} - modifier`, corps, pied);
 
   document.getElementById("btn-enregistrer").addEventListener("click", async () => {
     const donnees = lireFormulaire(document.getElementById("form-entreprise"));
@@ -1301,7 +1301,7 @@ async function ouvrirDetailEntreprise(numero) {
       <h3 class="section-panneau">Contexte / actus</h3>
       ${ent.contexte_actus
         ? `<div class="texte-long">${echapper(ent.contexte_actus)}</div>`
-        : `<div class="valeur-affichee vide">Pas encore de contexte — ajoute le résultat de tes recherches.</div>`}
+        : `<div class="valeur-affichee vide">Pas encore de contexte - ajoute le résultat de tes recherches.</div>`}
       ${ent.derniere_recherche ? `<p class="cellule-secondaire" style="margin-top:8px;">Dernière recherche le ${dateFr(ent.derniere_recherche)}</p>` : ""}
 
       <h3 class="section-panneau">Contacts (${contactsEnt.length})</h3>
@@ -1393,7 +1393,7 @@ async function ouvrirDetailContact(numero) {
       : echapper(contact.entreprise);
 
     // Un champ n'est affiché que s'il n'est pas vide (aucun email/téléphone/
-    // LinkedIn) : pas de ligne "—" pour une coordonnée non renseignée.
+    // LinkedIn) : pas de ligne vide pour une coordonnée non renseignée.
     const champsCoordonnees = [
       contact.email ? champAffiche("Email", `<a class="lien-detail" href="mailto:${echapper(contact.email)}">${echapper(contact.email)}</a>`) : "",
       contact.telephone ? champAffiche("Téléphone", `<a class="lien-detail" href="tel:${echapper(contact.telephone)}">${echapper(contact.telephone)}</a>`) : "",
@@ -1483,7 +1483,7 @@ async function ouvrirFormContact(numero = null) {
        <button class="btn btn-accent" id="btn-enregistrer">Ajouter le contact</button>`
     : `<button class="btn btn-danger" id="btn-supprimer">Supprimer</button>
        <button class="btn btn-accent" id="btn-enregistrer">Enregistrer</button>`;
-  ouvrirPanneau(creation ? "Nouveau contact" : `${contact.nom} — modifier`, corps, pied);
+  ouvrirPanneau(creation ? "Nouveau contact" : `${contact.nom} - modifier`, corps, pied);
 
   document.getElementById("btn-enregistrer").addEventListener("click", async () => {
     const donnees = lireFormulaire(document.getElementById("form-contact"));
@@ -1538,7 +1538,7 @@ function lienGoogleAgenda(echeance) {
   const format = (d) => dateISOLocale(d).replace(/-/g, "");
   const parametres = new URLSearchParams({
     action: "TEMPLATE",
-    text: `${echeance.libelle} — ${echeance.entreprise}`,
+    text: `${echeance.libelle} - ${echeance.entreprise}`,
     dates: `${format(debut)}/${format(fin)}`,
     details: echeance.poste,
   });
@@ -1551,7 +1551,7 @@ function chipEcheance(echeance) {
     <span class="chip-echeance-groupe" style="--couleur-statut:${COULEURS_ECHEANCE[echeance.type]}">
       <button class="chip-echeance"
               onclick="ouvrirDetailCandidature(${echeance.candidature_id})"
-              title="${echapper(echeance.libelle)} — ${echapper(echeance.entreprise)} (${echapper(echeance.poste)})">
+              title="${echapper(echeance.libelle)} - ${echapper(echeance.entreprise)} (${echapper(echeance.poste)})">
         <span class="point"></span>${echapper(echeance.libelle)} · ${echapper(echeance.entreprise)}
       </button>
       <a class="chip-echeance-ajout" href="${lienGoogleAgenda(echeance)}" target="_blank" rel="noopener"
@@ -1612,7 +1612,7 @@ async function vueAgenda() {
         const libelle = curseur.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" });
         blocs.push(`
           <div class="jour-semaine">
-            <div class="jour-semaine-titre">${echapper(libelle)}${i === 0 ? " — aujourd'hui" : ""}</div>
+            <div class="jour-semaine-titre">${echapper(libelle)}${i === 0 ? " - aujourd'hui" : ""}</div>
             ${jour.map(chipEcheance).join("")}
           </div>`);
       }
@@ -1708,7 +1708,7 @@ function ouvrirConnexionCalendrier() {
       <h3>App Rappels (macOS)</h3>
       <p class="sous-titre">En plus du calendrier, chaque échéance peut aussi devenir un rappel daté
         (bouton <strong>R</strong> à côté de chaque échéance), ou toutes d'un coup ci-dessous. La toute
-        première fois, macOS demande d'autoriser Azimut à automatiser Rappels — à accorder une fois.</p>
+        première fois, macOS demande d'autoriser Azimut à automatiser Rappels - à accorder une fois.</p>
       <button class="btn" id="btn-tout-pousser-rappels">Envoyer toutes les échéances vers Rappels</button>
       <p class="sous-titre" id="resultat-rappels" style="margin-top:8px;"></p>
     </div>`,
@@ -1744,7 +1744,7 @@ async function vueDocuments() {
     <tr>
       <td class="cellule-principale">${echapper(doc.nom_fichier)}</td>
       <td><span class="puce">${echapper(doc.type_document || "Autre")}</span></td>
-      <td>${echapper(doc.entreprise)} <span class="cellule-secondaire">— ${echapper(doc.poste)}</span></td>
+      <td>${echapper(doc.entreprise)} <span class="cellule-secondaire">${echapper(doc.poste)}</span></td>
       <td class="cellule-date">${dateFr(doc.date_ajout)}</td>
       <td>
         <a class="btn btn-discret" href="/api/documents/${doc.id}/telecharger">Télécharger</a>
@@ -1783,7 +1783,7 @@ async function ouvrirFormDocument() {
       <div class="champ pleine-largeur">
         <label for="doc-candidature">Candidature</label>
         <select id="doc-candidature">
-          ${candidaturesListe.map((c) => `<option value="${c.id}">${echapper(c.entreprise)} — ${echapper(c.poste)}</option>`).join("")}
+          ${candidaturesListe.map((c) => `<option value="${c.id}">${echapper(c.entreprise)} - ${echapper(c.poste)}</option>`).join("")}
         </select>
       </div>
       <div class="champ">
@@ -1791,7 +1791,7 @@ async function ouvrirFormDocument() {
         <select id="doc-type">${optionsSelect(etat.valeurs.types_document, null, false)}</select>
       </div>
       <div class="champ">
-        <label for="doc-fichier">Fichier(s) — PDF ou autre</label>
+        <label for="doc-fichier">Fichier(s) - PDF ou autre</label>
         <input type="file" id="doc-fichier" multiple>
       </div>
     </div>`,
@@ -1941,17 +1941,17 @@ async function vueStats() {
     .join("");
   return `
     <div class="entete-vue">
-      <div><h1>Statistiques</h1><div class="sous-titre">Ce qui marche, ce qui traîne — pour ajuster le tir</div></div>
+      <div><h1>Statistiques</h1><div class="sous-titre">Ce qui marche, ce qui traîne - pour ajuster le tir</div></div>
     </div>
     <div class="rangee-kpi">
       <div class="tuile">
         <div class="tuile-libelle">Délai moyen de réponse</div>
-        <div class="tuile-valeur">${stats.delai_moyen_reponse != null ? stats.delai_moyen_reponse + '<span style="font-size:16px;"> j</span>' : "—"}</div>
+        <div class="tuile-valeur">${stats.delai_moyen_reponse != null ? stats.delai_moyen_reponse + '<span style="font-size:16px;"> j</span>' : "-"}</div>
         <div class="tuile-detail">${stats.nb_delais_reponse ? `sur ${stats.nb_delais_reponse} réponse(s) datée(s)` : "aucune réponse datée pour l'instant"}</div>
       </div>
       <div class="tuile">
         <div class="tuile-libelle">Délai moyen jusqu'à l'entretien</div>
-        <div class="tuile-valeur">${stats.delai_moyen_entretien != null ? stats.delai_moyen_entretien + '<span style="font-size:16px;"> j</span>' : "—"}</div>
+        <div class="tuile-valeur">${stats.delai_moyen_entretien != null ? stats.delai_moyen_entretien + '<span style="font-size:16px;"> j</span>' : "-"}</div>
         <div class="tuile-detail">entre l'envoi et la date d'entretien</div>
       </div>
     </div>
@@ -1968,7 +1968,7 @@ async function vueStats() {
             <div class="piste"><div class="remplissage${obj.atteint ? " atteint" : ""}" style="width:${obj.pourcentage}%"></div></div>
             <span class="valeur">${obj.pourcentage}%</span>
           </div>
-          <p class="sous-titre">Semaine du ${dateFr(obj.debut_semaine)} au ${dateFr(obj.fin_semaine)}${obj.atteint ? " — objectif atteint, bravo !" : "."}</p>
+          <p class="sous-titre">Semaine du ${dateFr(obj.debut_semaine)} au ${dateFr(obj.fin_semaine)}${obj.atteint ? " - objectif atteint, bravo !" : "."}</p>
         ` : `<p class="sous-titre">Règle un objectif hebdomadaire dans <a class="lien-detail" href="#/reglages">Réglages</a> pour suivre ta progression ici.</p>`}
       </div>
       <div class="carte">
@@ -1986,7 +1986,7 @@ async function vueStats() {
       <div class="carte">
         <h2>Liens d'offres</h2>
         <p class="sous-titre">Un ping HTTP conservateur : seul un lien clairement retiré (404/410) est
-        signalé « mort » — souvent le signe que le poste a été pourvu.</p>
+        signalé « mort » - souvent le signe que le poste a été pourvu.</p>
         <div class="rangee-kpi" style="margin:12px 0;">
           <div class="tuile"><div class="tuile-libelle">Actifs</div><div class="tuile-valeur">${liens.actifs}</div></div>
           <div class="tuile"><div class="tuile-libelle">Morts</div><div class="tuile-valeur">${liens.morts}</div></div>
@@ -1995,7 +1995,7 @@ async function vueStats() {
         ${liens.liens_morts.length ? liens.liens_morts.map((l) => `
           <div class="ligne-lien-mort">
             <span onclick="ouvrirDetailCandidature(${l.id})" style="cursor:pointer;">
-              <strong>${echapper(l.entreprise)}</strong> — ${echapper(l.poste)}
+              <strong>${echapper(l.entreprise)}</strong> - ${echapper(l.poste)}
             </span>
             <a class="lien-detail" href="${echapper(l.lien_offre)}" target="_blank" rel="noopener">Voir l'offre</a>
           </div>`).join("") : ""}
@@ -2056,7 +2056,7 @@ async function vueRecherche() {
     const rendus = [
       ...resultats.candidatures.map((c) =>
         resultatRecherche("candidature", "Candidature", `ouvrirDetailCandidature(${c.id})`,
-          `${c.entreprise} — ${c.poste}`, `${c.statut}${c.ville ? " · " + c.ville : ""}`, c)),
+          `${c.entreprise} - ${c.poste}`, `${c.statut}${c.ville ? " · " + c.ville : ""}`, c)),
       ...resultats.entreprises.map((e) =>
         resultatRecherche("entreprise", "Entreprise", `ouvrirDetailEntreprise(${e.id})`,
           e.nom, e.site_web || "", e)),
@@ -2066,13 +2066,13 @@ async function vueRecherche() {
     ];
     corps = rendus.length
       ? `<div class="liste-resultats">${rendus.join("")}</div>
-         <p class="sous-titre">${rendus.length} résultat(s) — ${resultats.candidatures.length} candidature(s), ${resultats.entreprises.length} entreprise(s), ${resultats.contacts.length} contact(s)</p>`
+         <p class="sous-titre">${rendus.length} résultat(s) - ${resultats.candidatures.length} candidature(s), ${resultats.entreprises.length} entreprise(s), ${resultats.contacts.length} contact(s)</p>`
       : `<div class="etat-vide"><div class="titre">Aucun résultat pour « ${echapper(requete)} »</div><p>La recherche ignore la casse et les accents. Essaie un mot plus court.</p></div>`;
   }
   return `
     <div class="entete-vue"><h1>Recherche</h1></div>
     <input type="text" id="champ-recherche" class="champ-recherche-grande"
-           placeholder="Rechercher partout — entreprise, poste, note, contact…" value="${echapper(etat.rechercheTexte)}">
+           placeholder="Rechercher partout - entreprise, poste, note, contact…" value="${echapper(etat.rechercheTexte)}">
     ${corps}`;
 }
 
@@ -2109,12 +2109,12 @@ async function vueReglages() {
   const estAnthropic = r.fournisseur_ia !== "openai_compatible";
   return `
     <div class="entete-vue">
-      <div><h1>Réglages</h1><div class="sous-titre">Assistant IA, dossier de données, sauvegardes — tout reste sur cette machine</div></div>
+      <div><h1>Réglages</h1><div class="sous-titre">Assistant IA, dossier de données, sauvegardes - tout reste sur cette machine</div></div>
     </div>
     <div class="grille-bord">
       <div class="carte">
-        <h2>Assistant IA — analyse d'offres</h2>
-        <p class="sous-titre">Avec une clé API — de n'importe quel fournisseur —, le formulaire
+        <h2>Assistant IA - analyse d'offres</h2>
+        <p class="sous-titre">Avec une clé API (de n'importe quel fournisseur), le formulaire
         « Nouvelle candidature » sait se pré-remplir en collant le texte d'une offre. La clé est
         stockée dans la base locale, masquée dans l'interface, jamais exportée ni partagée. Rien
         n'est écrit sans ta validation.</p>
@@ -2131,7 +2131,7 @@ async function vueReglages() {
           <label for="reg-cle">Clé API</label>
           <div class="champ-mdp">
             <input type="password" id="reg-cle" autocomplete="off"
-                   placeholder="${r.cle_api_definie ? `Clé enregistrée (${echapper(r.cle_api_masquee)}) — coller ici pour la remplacer` : "sk-…"}">
+                   placeholder="${r.cle_api_definie ? `Clé enregistrée (${echapper(r.cle_api_masquee)}) - coller ici pour la remplacer` : "sk-…"}">
             <button type="button" class="btn btn-discret btn-oeil" data-cible="reg-cle">Afficher</button>
           </div>
         </div>
@@ -2153,7 +2153,7 @@ async function vueReglages() {
           <div class="champ" style="margin-top:10px;">
             <label for="reg-base-url">URL de base (optionnel)</label>
             <input type="text" id="reg-base-url"
-                   placeholder="Vide = api.openai.com — ou l'URL d'un autre fournisseur"
+                   placeholder="Vide = api.openai.com - ou l'URL d'un autre fournisseur"
                    value="${echapper(r.ia_base_url || "")}">
           </div>
           <p class="sous-titre">Exemples : Google Gemini → https://generativelanguage.googleapis.com/v1beta/openai/
@@ -2177,19 +2177,19 @@ async function vueReglages() {
       <div class="carte">
         <h2>Dossier de données</h2>
         <p class="sous-titre">Documents joints (CV, lettres, offres en PDF) et sauvegardes de la
-        base sont rangés ici, comme n'importe quel autre dossier — visibles et mis à jour dans le
+        base sont rangés ici, comme n'importe quel autre dossier - visibles et mis à jour dans le
         Finder en temps réel. Choisis un dossier suivi par iCloud Drive ou Dropbox pour qu'ils s'y
         synchronisent automatiquement, ou garde l'emplacement par défaut.</p>
         <div class="champ" style="margin-top:12px;">
           <label>Emplacement actuel</label>
-          <input type="text" value="${echapper(r.dossier_donnees || "Par défaut — dossier du programme")}" readonly>
+          <input type="text" value="${echapper(r.dossier_donnees || "Par défaut - dossier du programme")}" readonly>
         </div>
         <div class="actions-reglages">
           <button class="btn btn-accent" id="reg-choisir-dossier">Choisir un dossier…</button>
           ${r.dossier_donnees ? `<button class="btn" id="reg-dossier-defaut">Revenir à l'emplacement par défaut</button>` : ""}
         </div>
         <p class="sous-titre">Les fichiers déjà présents dans l'ancien emplacement n'y sont pas
-        déplacés automatiquement — seuls les prochains y sont écrits.</p>
+        déplacés automatiquement - seuls les prochains y sont écrits.</p>
       </div>
 
       <div class="carte">
@@ -2205,7 +2205,7 @@ async function vueReglages() {
 
       <div class="carte">
         <h2>Objectif hebdomadaire</h2>
-        <p class="sous-titre">Un nombre de candidatures à envoyer chaque semaine (lundi-dimanche) —
+        <p class="sous-titre">Un nombre de candidatures à envoyer chaque semaine (lundi-dimanche),
         la progression s'affiche dans Statistiques. Laisser vide pour désactiver.</p>
         <div class="champ" style="margin-top:12px; max-width:160px;">
           <label for="reg-objectif">Candidatures envoyées / semaine</label>
@@ -2220,7 +2220,7 @@ async function vueReglages() {
       <div class="carte">
         <h2>Notifications proactives</h2>
         <p class="sous-titre">Avec <code>Azimut Widget.app</code> ouvert (barre de menus), une
-        notification macOS s'affiche dès qu'un lien d'offre meurt ou qu'une relance devient due —
+        notification macOS s'affiche dès qu'un lien d'offre meurt ou qu'une relance devient due,
         sans avoir besoin d'ouvrir la fenêtre principale. La première fois, macOS demande
         d'autoriser les notifications pour le widget.</p>
         <label class="case" style="margin-top:10px;">
@@ -2233,7 +2233,7 @@ async function vueReglages() {
         <h2>Vue compagnon (iPhone / iPad)</h2>
         <p class="sous-titre">Une page en lecture seule (relances du jour, prochain entretien,
         liste des candidatures) accessible depuis ton téléphone, <strong>sur le même réseau
-        Wi-Fi que ce Mac</strong> — sans app à installer, sans compte, sans cloud. Aucun mot de
+        Wi-Fi que ce Mac</strong> - sans app à installer, sans compte, sans cloud. Aucun mot de
         passe de portail ni clé API n'y transite jamais. Protégée par un code d'accès ; à
         activer une fois puis <strong>relancer Azimut</strong> pour que ça prenne effet.</p>
         <label class="case" style="margin-top:10px;">
@@ -2257,7 +2257,7 @@ async function vueReglages() {
       <div class="carte">
         <h2>Capture rapide depuis Safari</h2>
         <p class="sous-titre">Un Raccourci macOS pour envoyer la page (ou le texte sélectionné) vue
-        dans Safari directement vers Azimut, en brouillon à compléter — Azimut doit être ouvert pour
+        dans Safari directement vers Azimut, en brouillon à compléter - Azimut doit être ouvert pour
         le recevoir. À construire une fois dans l'app Raccourcis :</p>
         <div class="bloc-raccourci">
           <ol>
@@ -2271,7 +2271,7 @@ async function vueReglages() {
           </ol>
         </div>
         <p class="sous-titre" style="margin-top:8px;">La candidature créée porte un statut « À préparer »
-        et une note qui rappelle son origine — à relire et compléter dans Azimut.</p>
+        et une note qui rappelle son origine - à relire et compléter dans Azimut.</p>
       </div>
 
       <div class="carte">
@@ -2326,7 +2326,7 @@ function activerReglages() {
     cible.textContent = "Test en cours…";
     try {
       const resultat = await api("/api/agent/tester", { methode: "POST" });
-      toast(`Connexion réussie (${resultat.fournisseur} — ${resultat.modele})`);
+      toast(`Connexion réussie (${resultat.fournisseur} - ${resultat.modele})`);
     } catch (erreur) {
       toast(erreur.message, true);
     } finally {
@@ -2423,8 +2423,8 @@ function activerReglages() {
       await api("/api/reglages/compagnon", { methode: "POST", corps: { actif: evenement.target.checked } });
       toast(
         evenement.target.checked
-          ? "Vue compagnon activée — relance Azimut pour qu'elle démarre"
-          : "Vue compagnon désactivée — relance Azimut pour l'arrêter"
+          ? "Vue compagnon activée - relance Azimut pour qu'elle démarre"
+          : "Vue compagnon désactivée - relance Azimut pour l'arrêter"
       );
       rendre();
     } catch (erreur) {
@@ -2437,7 +2437,7 @@ function activerReglages() {
     boutonRegenererCode.addEventListener("click", async () => {
       const accord = await confirmer(
         "Régénérer le code d'accès ?",
-        "L'ancien code cessera de fonctionner immédiatement — les appareils déjà connectés devront ressaisir le nouveau."
+        "L'ancien code cessera de fonctionner immédiatement - les appareils déjà connectés devront ressaisir le nouveau."
       );
       if (!accord) return;
       try {
@@ -2477,7 +2477,7 @@ async function vueModeEntretien(numero) {
       <button class="btn" onclick="location.hash='#/candidatures'">← Retour</button>
       <div style="flex:1;">
         <h1>${echapper(cand.entreprise)}</h1>
-        <div class="sous-titre">${echapper(cand.poste)} — mode entretien${cand.date_entretien ? " · " + dateFr(cand.date_entretien) : ""}</div>
+        <div class="sous-titre">${echapper(cand.poste)} - mode entretien${cand.date_entretien ? " · " + dateFr(cand.date_entretien) : ""}</div>
       </div>
       <span class="sous-titre" id="indicateur-notes"></span>
     </div>
@@ -2486,7 +2486,7 @@ async function vueModeEntretien(numero) {
       <div class="carte colonne-notes">
         <h2>Notes d'entretien</h2>
         <textarea id="zone-notes-entretien"
-          placeholder="Prends tes notes ici pendant le rendez-vous — elles s'enregistrent automatiquement dans la candidature.">${echapper(cand.notes_entretien || "")}</textarea>
+          placeholder="Prends tes notes ici pendant le rendez-vous - elles s'enregistrent automatiquement dans la candidature.">${echapper(cand.notes_entretien || "")}</textarea>
       </div>
     </div>`;
 }
@@ -2553,7 +2553,7 @@ function confirmer(titre, message) {
 }
 
 /* Petite saisie de texte modale (remplace prompt(), pas fiable dans une
-   WKWebView) — utilisée pour la saisie manuelle du dossier de données. */
+   WKWebView) - utilisée pour la saisie manuelle du dossier de données. */
 function demanderTexte(titre, placeholder, valeurInitiale = "") {
   return new Promise((resoudre) => {
     ouvrirModale(
@@ -2590,7 +2590,7 @@ function confirmerSimilaires(liste) {
     .map(
       (r) => `
       <div class="ligne-similaire">
-        <div><strong>${echapper(r.entreprise)}</strong> — ${echapper(r.poste)}
+        <div><strong>${echapper(r.entreprise)}</strong> - ${echapper(r.poste)}
           <span class="cellule-secondaire">(${echapper(r.statut)})</span></div>
         <div>${r.raisons.map((raison) => `<span class="puce">${echapper(raison)}</span>`).join(" ")}</div>
       </div>`
@@ -2601,7 +2601,7 @@ function confirmerSimilaires(liste) {
       "Candidature(s) proche(s) trouvée(s)",
       `<p>Ça ressemble peut-être à une candidature déjà enregistrée :</p>
        <div class="liste-similaires">${lignes}</div>
-       <p class="sous-titre">Ce n'est qu'un avertissement — si c'est bien une candidature différente, continue normalement.</p>`,
+       <p class="sous-titre">Ce n'est qu'un avertissement - si c'est bien une candidature différente, continue normalement.</p>`,
       `<button class="btn" id="btn-annuler-similaire">Modifier avant d'ajouter</button>
        <button class="btn btn-accent" id="btn-continuer-similaire">Créer quand même</button>`,
       true
@@ -2730,7 +2730,7 @@ document.getElementById("fichier-import").addEventListener("change", async (even
 });
 
 /* Import CSV générique (LinkedIn, Indeed, ou tout autre export) : deux
-   étapes — un aperçu des colonnes détectées, puis une correspondance
+   étapes - un aperçu des colonnes détectées, puis une correspondance
    colonne -> champ choisie par l'utilisateur avant d'importer. */
 const LIBELLES_CHAMPS_CSV = {
   entreprise: "Entreprise *",
@@ -2767,7 +2767,7 @@ document.getElementById("fichier-import-csv").addEventListener("change", async (
 function ouvrirCorrespondanceCsv(apercu) {
   const v = etat.valeurs;
   const optionsColonnes = (selection) => `
-    <option value="">— non importé —</option>
+    <option value="">non importé</option>
     ${apercu.entetes.map((e) => `<option value="${echapperAttribut(e)}"${e === selection ? " selected" : ""}>${echapper(e)}</option>`).join("")}`;
 
   // Devine une correspondance de départ par ressemblance de nom, pour éviter
@@ -2790,7 +2790,7 @@ function ouvrirCorrespondanceCsv(apercu) {
     .join("");
 
   const corps = `
-    <p class="sous-titre">Associe chaque champ à une colonne du fichier — les colonnes non associées sont ignorées.</p>
+    <p class="sous-titre">Associe chaque champ à une colonne du fichier - les colonnes non associées sont ignorées.</p>
     <div class="enveloppe-tableau" style="margin-bottom:14px;max-height:160px;">
       <table class="tableau"><thead><tr>${apercu.entetes.map((e) => `<th>${echapper(e)}</th>`).join("")}</tr></thead>
       <tbody>${lignesApercu}</tbody></table>

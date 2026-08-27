@@ -1,4 +1,4 @@
-"""Vue compagnon (lecture seule) pour iPhone/iPad — sans app native, sans
+"""Vue compagnon (lecture seule) pour iPhone/iPad - sans app native, sans
 cloud : un second petit serveur Flask, séparé du serveur principal, exposé
 sur le réseau local UNIQUEMENT si activé dans Réglages, et protégé par un
 code d'accès généré sur cette machine.
@@ -6,7 +6,7 @@ code d'accès généré sur cette machine.
 Surface volontairement minuscule et strictement en lecture :
 - aucune route d'écriture (impossible de modifier quoi que ce soit d'ici) ;
 - aucun champ sensible ne transite jamais (mots de passe de portail, clé
-  API, notes, texte d'offre) — seulement de quoi vérifier les relances du
+  API, notes, texte d'offre) - seulement de quoi vérifier les relances du
   jour, le prochain entretien et la liste des candidatures, sur le même
   Wi-Fi que le Mac.
 
@@ -55,7 +55,7 @@ def _code_fourni_valide():
 
 
 def ip_locale():
-    """Adresse IP de cette machine sur le réseau local (best effort) — pour
+    """Adresse IP de cette machine sur le réseau local (best effort) - pour
     afficher l'URL à taper sur le téléphone. Ne fait aucune vraie requête
     réseau : le socket UDP n'envoie rien, il sert juste à faire choisir au
     système la bonne interface réseau."""
@@ -117,7 +117,7 @@ PAGE_HTML = """<!doctype html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Azimut — Compagnon</title>
+<title>Azimut - Compagnon</title>
 <style>
   :root { color-scheme: dark; }
   * { box-sizing: border-box; }
@@ -155,7 +155,7 @@ PAGE_HTML = """<!doctype html>
   </div>
   <div id="app">
     <h1>Azimut</h1>
-    <p class="sous-titre">Vue compagnon — lecture seule</p>
+    <p class="sous-titre">Vue compagnon - lecture seule</p>
     <div class="carte">
       <h2>Relances à faire</h2>
       <div id="liste-relances"></div>

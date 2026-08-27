@@ -1,5 +1,5 @@
 """Gestion des candidatures : ajout avec détection de doublon, modification,
-listing — chaque étape marquante alimente automatiquement le journal (evenements)."""
+listing - chaque étape marquante alimente automatiquement le journal (evenements)."""
 
 import db
 import documents
@@ -104,7 +104,7 @@ def ajouter_candidature(entreprise_nom, poste, chemin_db=None, **champs):
         )
         evenements.enregistrer(
             conn, curseur.lastrowid, "creation",
-            f"Candidature créée — statut « {valides.get('statut', 'À préparer')} »",
+            f"Candidature créée - statut « {valides.get('statut', 'À préparer')} »",
         )
         conn.commit()
         return curseur.lastrowid
@@ -114,14 +114,14 @@ def ajouter_candidature(entreprise_nom, poste, chemin_db=None, **champs):
 
 def modifier_candidature(id_candidature, chemin_db=None, **champs):
     """Modifie une candidature existante. Champs modifiables : ceux du modèle
-    (statut, priorite, date_entretien, notes, ...) — jamais id ni entreprise_id."""
+    (statut, priorite, date_entretien, notes, ...) - jamais id ni entreprise_id."""
     valides = valider_champs("candidatures", champs)
     if not valides:
         raise ValeurNonAutorisee("Aucun champ à modifier n'a été fourni.")
     if "poste" in valides and not valides["poste"]:
         raise ValeurNonAutorisee("L'intitulé du poste ne peut pas être vidé.")
     if "statut" in valides and valides["statut"] is None:
-        raise ValeurNonAutorisee("Le statut ne peut pas être vidé — choisir une valeur.")
+        raise ValeurNonAutorisee("Le statut ne peut pas être vidé - choisir une valeur.")
     conn = db.ouvrir(chemin_db)
     try:
         actuelle = conn.execute(

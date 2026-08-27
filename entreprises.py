@@ -1,6 +1,6 @@
 """Gestion des entreprises : ajout sans doublon, modification, listing.
 
-Toute écriture passe par ces fonctions — jamais de SQL direct depuis l'extérieur.
+Toute écriture passe par ces fonctions - jamais de SQL direct depuis l'extérieur.
 """
 
 from datetime import date
@@ -30,7 +30,7 @@ def ajouter_ou_recuperer_entreprise(nom, site_web=None, contexte_actus=None, che
     - La comparaison du nom est insensible à la casse et aux accents.
     - Si l'entreprise existe déjà : les champs fournis remplissent les champs
       encore vides ; si un champ existant non vide diffère de la valeur fournie,
-      ConflitMiseAJour est levée — l'appelant décide (modifier_entreprise pour
+      ConflitMiseAJour est levée - l'appelant décide (modifier_entreprise pour
       écraser explicitement).
     - Quand contexte_actus est écrit, derniere_recherche est datée du jour.
     """
@@ -85,7 +85,7 @@ def ajouter_ou_recuperer_entreprise(nom, site_web=None, contexte_actus=None, che
 
 def modifier_entreprise(id_entreprise, chemin_db=None, **champs):
     """Modifie explicitement une entreprise (champs : nom, site_web, contexte_actus,
-    derniere_recherche). Écrase les valeurs existantes — c'est le but."""
+    derniere_recherche). Écrase les valeurs existantes - c'est le but."""
     valides = valider_champs("entreprises", champs)
     if not valides:
         raise ValeurNonAutorisee("Aucun champ à modifier n'a été fourni.")
@@ -154,7 +154,7 @@ def fusionner_entreprises(id_conserver, id_supprimer, chemin_db=None):
     """Fusionne id_supprimer dans id_conserver : candidatures et contacts sont
     ré-attribués à id_conserver, ses champs vides (site_web, contexte_actus,
     derniere_recherche) sont complétés depuis id_supprimer, puis id_supprimer
-    est supprimé. Irréversible — pensé pour les doublons repérés par
+    est supprimé. Irréversible - pensé pour les doublons repérés par
     doublons.entreprises_similaires (ex. « Mistral » / « Mistral AI »).
 
     Retourne un résumé : {id, nom, candidatures_deplacees, contacts_deplaces,

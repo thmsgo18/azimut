@@ -240,7 +240,7 @@ class TestGenererMessageRelance(unittest.TestCase):
         self._definir(cle_api="sk-ant-test")
         ancien = agent._generer_texte_anthropic
         agent._generer_texte_anthropic = lambda config, instructions, contenu: (_ for _ in ()).throw(
-            ErreurSuivi("Réponse vide de l'IA — réessayer.")
+            ErreurSuivi("Réponse vide de l'IA - réessayer.")
         )
         try:
             with self.assertRaises(ErreurSuivi):

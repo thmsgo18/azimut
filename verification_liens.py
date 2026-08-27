@@ -1,10 +1,10 @@
 """Détection des liens d'offres morts : un ping HTTP conservateur.
 
 Seul un 404/410 sans ambiguïté marque un lien « mort » (souvent signe que
-l'offre a été pourvue ou retirée). Toute autre anomalie — délai dépassé, DNS,
-erreur 5xx, 403 anti-robot… — reste « inconnu » : jamais de faux positif.
+l'offre a été pourvue ou retirée). Toute autre anomalie - délai dépassé, DNS,
+erreur 5xx, 403 anti-robot… - reste « inconnu » : jamais de faux positif.
 Aucune information n'est déduite du contenu de la page, seulement du code
-HTTP — un site qui redirige vers un « poste pourvu » tout en répondant 200
+HTTP - un site qui redirige vers un « poste pourvu » tout en répondant 200
 n'est pas détecté, c'est un choix délibéré de prudence.
 """
 

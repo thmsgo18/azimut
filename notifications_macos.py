@@ -4,11 +4,11 @@ et liens d'offres morts, sans avoir besoin d'ouvrir la fenêtre principale.
 Volontairement peu bavard, à l'image de verification_liens.py : une seule
 notification par jour pour les relances (un résumé, pas une par candidature),
 et une seule notification par candidature la première fois que son lien
-d'offre passe à « mort » — jamais de répétition en boucle à chaque
+d'offre passe à « mort » - jamais de répétition en boucle à chaque
 actualisation du widget (toutes les 10 minutes).
 
 L'état de ce qui a déjà été notifié est gardé dans un petit fichier JSON à
-côté du code (comme la base elle-même) — ce n'est pas une donnée métier,
+côté du code (comme la base elle-même) - ce n'est pas une donnée métier,
 jamais lu ni écrit via les fonctions candidatures.py."""
 
 import json
@@ -43,7 +43,7 @@ def _ecrire_etat(chemin_etat, etat):
 
 
 def envoyer_notification(titre, texte):
-    """Affiche une notification macOS via osascript — best effort, ne lève
+    """Affiche une notification macOS via osascript - best effort, ne lève
     jamais d'exception (l'appelant ne doit pas planter si ça échoue)."""
     script = f"display notification {json.dumps(str(texte))} with title {json.dumps(str(titre))}"
     try:
@@ -68,7 +68,7 @@ def verifier_et_notifier(chemin_db=None, chemin_etat=None):
             if relances:
                 pluriel = "s" if len(relances) > 1 else ""
                 envoyer_notification(
-                    "Azimut — relances du jour",
+                    "Azimut - relances du jour",
                     f"{len(relances)} candidature{pluriel} à relancer aujourd'hui.",
                 )
             etat["derniere_digest_relances"] = aujourd_hui
@@ -77,8 +77,8 @@ def verifier_et_notifier(chemin_db=None, chemin_etat=None):
         for lien in verification_liens.etat_liens(chemin_db=chemin_db)["liens_morts"]:
             if lien["id"] not in deja_notifies:
                 envoyer_notification(
-                    "Azimut — lien d'offre mort",
-                    f"{lien['entreprise']} — {lien['poste']} : l'offre semble avoir été retirée.",
+                    "Azimut - lien d'offre mort",
+                    f"{lien['entreprise']} - {lien['poste']} : l'offre semble avoir été retirée.",
                 )
                 deja_notifies.add(lien["id"])
         etat["liens_morts_notifies"] = sorted(deja_notifies)

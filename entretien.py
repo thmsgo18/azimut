@@ -24,7 +24,7 @@ def generer_fiche_entretien(candidature_id, chemin_db=None):
     lignes = []
 
     # 1. En-tête
-    lignes.append(f"# Préparation d'entretien — {cand['entreprise']}")
+    lignes.append(f"# Préparation d'entretien - {cand['entreprise']}")
     lignes.append("")
     lignes.append(f"**Poste :** {cand['poste']}")
     lignes.append(f"**Date de l'entretien :** {_date_fr(cand['date_entretien']) or 'non renseignée'}")
@@ -49,7 +49,7 @@ def generer_fiche_entretien(candidature_id, chemin_db=None):
             lignes.append(f"*(dernière recherche : {_date_fr(cand['derniere_recherche'])})*")
     else:
         lignes.append(
-            "Aucun contexte enregistré pour cette entreprise — penser à faire "
+            "Aucun contexte enregistré pour cette entreprise - penser à faire "
             "une recherche (actus, missions liées au domaine) avant l'entretien."
         )
     lignes.append("")
@@ -63,7 +63,7 @@ def generer_fiche_entretien(candidature_id, chemin_db=None):
             lignes.append("")
             lignes.append(f"*Lien : {cand['lien_offre']}*")
     elif cand["lien_offre"]:
-        lignes.append(f"Texte non archivé — voir l'annonce : {cand['lien_offre']}")
+        lignes.append(f"Texte non archivé - voir l'annonce : {cand['lien_offre']}")
     else:
         lignes.append("Ni texte ni lien d'offre enregistrés (candidature spontanée ?).")
     lignes.append("")
@@ -134,7 +134,7 @@ def generer_fiche_entretien(candidature_id, chemin_db=None):
         lignes.append("")
         for evenement in journal:
             jour = _date_fr(evenement["horodatage"][:10]) or evenement["horodatage"]
-            lignes.append(f"- {jour} — {evenement['description']}")
+            lignes.append(f"- {jour} - {evenement['description']}")
         lignes.append("")
 
     return "\n".join(lignes)

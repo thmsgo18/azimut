@@ -30,7 +30,7 @@ class TestScoreEtLiens(unittest.TestCase):
     def test_score_ignore_le_bruit(self):
         # « (H/F) » et « Stage » sont du bruit : les intitulés se valent.
         self.assertGreaterEqual(
-            score_similarite("Stage — Agents IA (H/F)", "Stage agents IA"), 0.9
+            score_similarite("Stage - Agents IA (H/F)", "Stage agents IA"), 0.9
         )
 
     def test_score_bas_pour_intitules_sans_rapport(self):
@@ -62,7 +62,7 @@ class TestCandidaturesSimilaires(unittest.TestCase):
 
     def test_intitule_proche_detecte(self):
         sims = candidatures_similaires(
-            "AgentikCo", "Stage — Agents IA (H/F)", chemin_db=self.chemin_db
+            "AgentikCo", "Stage - Agents IA (H/F)", chemin_db=self.chemin_db
         )
         self.assertEqual(len(sims), 1)
         self.assertIn("intitulés très proches", sims[0]["raisons"])
@@ -93,7 +93,7 @@ class TestCandidaturesSimilaires(unittest.TestCase):
         # Un intitulé proche mais différent doit pouvoir être ajouté : ce
         # n'est qu'un avertissement, jamais un blocage.
         numero = ajouter_candidature(
-            "AgentikCo", "Stage — Agents IA (H/F)", chemin_db=self.chemin_db
+            "AgentikCo", "Stage - Agents IA (H/F)", chemin_db=self.chemin_db
         )
         self.assertEqual(len(lister_candidatures(chemin_db=self.chemin_db)), 2)
         self.assertIsNotNone(numero)

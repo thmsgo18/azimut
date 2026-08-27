@@ -1,5 +1,5 @@
 """Tests de l'import CSV générique : mappage de colonnes, doublons, valeurs
-fixes, fichiers invalides — sans jamais présupposer un format LinkedIn ou
+fixes, fichiers invalides - sans jamais présupposer un format LinkedIn ou
 Indeed figé."""
 
 import sys

@@ -2,7 +2,7 @@
 
 Deux niveaux dans l'appli :
 - le doublon EXACT (entreprise + poste identiques à la casse/aux accents près)
-  reste refusé net par candidatures.py — rien ne change ;
+  reste refusé net par candidatures.py - rien ne change ;
 - le doublon PROBABLE (intitulés proches, ou même lien d'offre) déclenche un
   avertissement : l'utilisateur décide, rien n'est bloqué automatiquement.
 """
@@ -124,7 +124,7 @@ def entreprises_similaires(nom, chemin_db=None, exclure_id=None):
 
 
 def paires_entreprises_suspectes(chemin_db=None):
-    """Toutes les paires d'entreprises proches, une seule fois chacune — pour une
+    """Toutes les paires d'entreprises proches, une seule fois chacune - pour une
     page de nettoyage/fusion. Retourne [{a: {id, nom}, b: {id, nom}, score}, ...],
     triées par score décroissant."""
     liste = lister_entreprises(chemin_db=chemin_db)

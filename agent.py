@@ -1,9 +1,9 @@
 """Couche agentique : analyse d'une offre de stage via une IA générative.
 
 Deux fournisseurs pris en charge (réglage "fournisseur_ia") :
-- "anthropic" : l'API Claude native — structured outputs stricts et recherche
+- "anthropic" : l'API Claude native - structured outputs stricts et recherche
   web intégrée pour le contexte entreprise.
-- "openai_compatible" : n'importe quel service qui parle le protocole OpenAI —
+- "openai_compatible" : n'importe quel service qui parle le protocole OpenAI,
   OpenAI, Mistral, Groq, DeepSeek, Google Gemini (via son endpoint compatible
   https://generativelanguage.googleapis.com/v1beta/openai/), OpenRouter, ou un
   modèle local (Ollama, LM Studio…). Il suffit de renseigner la clé, le nom du
@@ -12,7 +12,7 @@ Deux fournisseurs pris en charge (réglage "fournisseur_ia") :
 
 Règles (section 8 du cahier des charges), valables pour les deux fournisseurs :
 - ne JAMAIS rien inventer : un champ absent de l'offre reste null ;
-- ne JAMAIS écrire en base ici — ce module ne fait que proposer, c'est
+- ne JAMAIS écrire en base ici - ce module ne fait que proposer, c'est
   l'utilisateur qui valide dans le formulaire, puis l'interface écrit via
   l'API métier habituelle ;
 - la clé API vient des Réglages (table reglages) et ne quitte pas la machine.
@@ -108,9 +108,9 @@ def _config(chemin_db=None):
 def _normaliser_proposition(donnees):
     """Rend la proposition sûre à utiliser même si le fournisseur ne respecte
     pas le schéma à la lettre (les fournisseurs génériques ne le garantissent
-    pas) — les clés manquantes ou mal formées deviennent simplement vides."""
+    pas) - les clés manquantes ou mal formées deviennent simplement vides."""
     if not isinstance(donnees, dict):
-        raise ErreurSuivi("Réponse de l'IA illisible — réessayer.")
+        raise ErreurSuivi("Réponse de l'IA illisible - réessayer.")
     entreprise = donnees.get("entreprise")
     entreprise = entreprise if isinstance(entreprise, dict) else {}
     candidature = donnees.get("candidature")
@@ -194,10 +194,10 @@ def _contexte_relance(candidature, contact=None):
 
 def generer_message_relance(candidature, contact=None, chemin_db=None):
     """Génère un brouillon de message de relance (objet + corps) à partir des
-    faits connus d'une candidature. Jamais d'écriture en base ici — un texte
+    faits connus d'une candidature. Jamais d'écriture en base ici - un texte
     à relire et copier, comme le reste de cette couche."""
     if not candidature or not candidature.get("entreprise") or not candidature.get("poste"):
-        raise ValeurNonAutorisee("Candidature invalide — entreprise et poste requis.")
+        raise ValeurNonAutorisee("Candidature invalide - entreprise et poste requis.")
     config = _config(chemin_db)
     contenu = "Voici les faits connus pour cette relance :\n\n" + _contexte_relance(
         candidature, contact
@@ -210,7 +210,7 @@ def generer_message_relance(candidature, contact=None, chemin_db=None):
 def rechercher_contexte(nom_entreprise, chemin_db=None):
     """Cherche sur le web public un court contexte factuel sur l'entreprise.
 
-    Best effort : jamais d'information inventée — si rien de fiable n'est
+    Best effort : jamais d'information inventée - si rien de fiable n'est
     trouvé, le texte le dit simplement. Nécessite le fournisseur Anthropic
     (seul à exposer une recherche web intégrée dans cette appli)."""
     if not nom_entreprise or not str(nom_entreprise).strip():
@@ -231,17 +231,17 @@ def _traduire_erreur_anthropic(erreur):
     import anthropic
 
     if isinstance(erreur, anthropic.AuthenticationError):
-        return ErreurSuivi("Clé API refusée — vérifier la clé dans Réglages.")
+        return ErreurSuivi("Clé API refusée - vérifier la clé dans Réglages.")
     if isinstance(erreur, anthropic.PermissionDeniedError):
         return ErreurSuivi("Cette clé API n'a pas les permissions nécessaires.")
     if isinstance(erreur, anthropic.RateLimitError):
-        return ErreurSuivi("Limite de débit de l'API atteinte — réessayer dans une minute.")
+        return ErreurSuivi("Limite de débit de l'API atteinte - réessayer dans une minute.")
     if isinstance(erreur, anthropic.NotFoundError):
-        return ErreurSuivi("Modèle inconnu — vérifier le modèle choisi dans Réglages.")
+        return ErreurSuivi("Modèle inconnu - vérifier le modèle choisi dans Réglages.")
     if isinstance(erreur, anthropic.APIConnectionError):
-        return ErreurSuivi("Impossible de joindre l'API Anthropic — vérifier la connexion Internet.")
+        return ErreurSuivi("Impossible de joindre l'API Anthropic - vérifier la connexion Internet.")
     if isinstance(erreur, anthropic.APIStatusError):
-        return ErreurSuivi(f"Erreur de l'API Anthropic ({erreur.status_code}) — réessayer.")
+        return ErreurSuivi(f"Erreur de l'API Anthropic ({erreur.status_code}) - réessayer.")
     return ErreurSuivi(f"Erreur inattendue pendant l'appel à l'IA : {erreur}")
 
 
@@ -275,10 +275,10 @@ def _analyser_anthropic(config, contenu):
     except anthropic.APIError as erreur:
         raise _traduire_erreur_anthropic(erreur)
     if reponse.stop_reason == "refusal":
-        raise ErreurSuivi("L'IA a refusé d'analyser ce texte — réessayer avec le texte brut de l'offre.")
+        raise ErreurSuivi("L'IA a refusé d'analyser ce texte - réessayer avec le texte brut de l'offre.")
     texte_json = next((b.text for b in reponse.content if b.type == "text"), None)
     if not texte_json:
-        raise ErreurSuivi("Réponse vide de l'IA — réessayer.")
+        raise ErreurSuivi("Réponse vide de l'IA - réessayer.")
     return json.loads(texte_json)
 
 
@@ -296,10 +296,10 @@ def _generer_texte_anthropic(config, instructions, contenu):
     except anthropic.APIError as erreur:
         raise _traduire_erreur_anthropic(erreur)
     if reponse.stop_reason == "refusal":
-        raise ErreurSuivi("L'IA a refusé de générer ce message — réessayer.")
+        raise ErreurSuivi("L'IA a refusé de générer ce message - réessayer.")
     texte = "\n".join(b.text for b in reponse.content if b.type == "text").strip()
     if not texte:
-        raise ErreurSuivi("Réponse vide de l'IA — réessayer.")
+        raise ErreurSuivi("Réponse vide de l'IA - réessayer.")
     return texte
 
 
@@ -315,7 +315,7 @@ def _rechercher_contexte_anthropic(config, nom_entreprise):
                 "Tu prépares un candidat à un stage. Réponds en français, en 3 à 5 phrases "
                 "factuelles : ce que fait l'entreprise, ses actualités récentes, et tout ce qui "
                 "touche à l'IA ou aux systèmes agentiques. Uniquement des faits trouvés sur le "
-                "web public — si tu ne trouves rien de fiable, dis-le simplement. Pas de listes, "
+                "web public - si tu ne trouves rien de fiable, dis-le simplement. Pas de listes, "
                 "pas d'URL, pas de conseils."
             ),
             messages=[
@@ -352,19 +352,19 @@ def _traduire_erreur_openai(erreur):
     import openai
 
     if isinstance(erreur, openai.AuthenticationError):
-        return ErreurSuivi("Clé API refusée — vérifier la clé dans Réglages.")
+        return ErreurSuivi("Clé API refusée - vérifier la clé dans Réglages.")
     if isinstance(erreur, openai.PermissionDeniedError):
         return ErreurSuivi("Cette clé API n'a pas les permissions nécessaires.")
     if isinstance(erreur, openai.RateLimitError):
-        return ErreurSuivi("Limite de débit de l'API atteinte — réessayer dans une minute.")
+        return ErreurSuivi("Limite de débit de l'API atteinte - réessayer dans une minute.")
     if isinstance(erreur, openai.NotFoundError):
-        return ErreurSuivi("Modèle inconnu — vérifier le nom du modèle dans Réglages.")
+        return ErreurSuivi("Modèle inconnu - vérifier le nom du modèle dans Réglages.")
     if isinstance(erreur, openai.APIConnectionError):
         return ErreurSuivi(
-            "Impossible de joindre ce fournisseur — vérifier l'URL de base et la connexion Internet."
+            "Impossible de joindre ce fournisseur - vérifier l'URL de base et la connexion Internet."
         )
     if isinstance(erreur, openai.APIStatusError):
-        return ErreurSuivi(f"Erreur du fournisseur ({erreur.status_code}) — réessayer.")
+        return ErreurSuivi(f"Erreur du fournisseur ({erreur.status_code}) - réessayer.")
     return ErreurSuivi(f"Erreur inattendue pendant l'appel à l'IA : {erreur}")
 
 
@@ -377,19 +377,19 @@ def _verifier_modele_renseigne(config):
 
 
 def _extraire_json(texte):
-    """Tolère un bloc ```json … ``` ou du texte parasite autour du JSON —
+    """Tolère un bloc ```json … ``` ou du texte parasite autour du JSON,
     tous les fournisseurs génériques ne respectent pas un format strict."""
     texte = (texte or "").strip()
     correspondance = re.search(r"\{.*\}", texte, re.DOTALL)
     if not correspondance:
         raise ErreurSuivi(
-            "Le fournisseur n'a pas renvoyé de JSON exploitable — réessayer ou changer de modèle."
+            "Le fournisseur n'a pas renvoyé de JSON exploitable - réessayer ou changer de modèle."
         )
     try:
         return json.loads(correspondance.group(0))
     except json.JSONDecodeError:
         raise ErreurSuivi(
-            "Le fournisseur n'a pas renvoyé de JSON valide — réessayer ou changer de modèle."
+            "Le fournisseur n'a pas renvoyé de JSON valide - réessayer ou changer de modèle."
         )
 
 
@@ -427,7 +427,7 @@ def _generer_texte_openai_compatible(config, instructions, contenu):
         raise _traduire_erreur_openai(erreur)
     texte = (reponse.choices[0].message.content or "").strip()
     if not texte:
-        raise ErreurSuivi("Réponse vide du fournisseur — réessayer.")
+        raise ErreurSuivi("Réponse vide du fournisseur - réessayer.")
     return texte
 
 

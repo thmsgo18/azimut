@@ -1,4 +1,4 @@
-"""Tests de statistiques.py : série hebdomadaire et objectif — calculs
+"""Tests de statistiques.py : série hebdomadaire et objectif - calculs
 volontairement indépendants de la date du jour (utilisent date.today()
 au moment du test, jamais une date codée en dur)."""
 

@@ -3,7 +3,7 @@ candidatures externe (LinkedIn, Indeed, ou tout autre tableur exporté en
 CSV).
 
 Le format exact de ces exports n'est pas stable (colonnes, ordre, langue) et
-change au gré des fournisseurs — plutôt que de deviner un format figé et de
+change au gré des fournisseurs - plutôt que de deviner un format figé et de
 casser au premier changement, l'appelant choisit lui-même à quelle colonne
 du fichier correspond chaque champ de la base (voir apercu_csv).
 
@@ -53,7 +53,7 @@ def _lire_lignes(chemin_fichier):
 
 
 def apercu_csv(chemin_fichier, limite=5):
-    """Retourne {"entetes": [...], "lignes": [[...], ...]} — pour construire
+    """Retourne {"entetes": [...], "lignes": [[...], ...]} - pour construire
     un écran de correspondance colonne -> champ, sans rien écrire en base."""
     lignes = _lire_lignes(chemin_fichier)
     if not lignes:
@@ -96,7 +96,7 @@ def importer_csv(chemin_fichier, correspondance, valeurs_fixes=None, chemin_db=N
         entreprise = valeurs.pop("entreprise", None)
         poste = valeurs.pop("poste", None)
         if not entreprise or not poste:
-            rapport["erreurs"].append(f"Ligne {numero} : entreprise ou poste manquant — ignorée.")
+            rapport["erreurs"].append(f"Ligne {numero} : entreprise ou poste manquant - ignorée.")
             continue
         try:
             if verifier_doublon_candidature(entreprise, poste, chemin_db=chemin_db):
