@@ -428,7 +428,7 @@ def api_reglages_modifier():
     donnees = request.get_json(silent=True) or {}
     for cle in (
         "cle_api", "fournisseur_ia", "modele_ia", "ia_base_url", "recherche_web",
-        "objectif_hebdomadaire", "notifications_macos",
+        "objectif_hebdomadaire", "notifications_macos", "langue",
     ):
         if cle in donnees:
             reglages.definir_reglage(cle, donnees[cle])

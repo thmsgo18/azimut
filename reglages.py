@@ -24,6 +24,7 @@ REGLAGES_CONNUS = {
     "notifications_macos": "Non",       # notifications proactives (widget) : liens morts, relances
     "compagnon_actif": "Non",           # vue compagnon iPhone/iPad (lecture seule, réseau local)
     "compagnon_code": None,             # code d'accès à la vue compagnon (régénérable)
+    "langue": "fr",                     # langue de l'interface : "fr" ou "en"
 }
 
 FOURNISSEURS_IA = ["anthropic", "openai_compatible"]
@@ -117,6 +118,7 @@ def etat_reglages(chemin_db=None):
         "dossier_donnees_par_defaut": dossier is None,
         "objectif_hebdomadaire": obtenir_reglage("objectif_hebdomadaire", chemin_db=chemin_db),
         "notifications_macos": obtenir_reglage("notifications_macos", chemin_db=chemin_db),
+        "langue": obtenir_reglage("langue", chemin_db=chemin_db),
         "compagnon_actif": obtenir_reglage("compagnon_actif", chemin_db=chemin_db),
         "compagnon_code": (
             code_compagnon(chemin_db=chemin_db)

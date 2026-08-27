@@ -76,7 +76,8 @@ Définies dans `valeurs.py` (la casse et les accents sont tolérés en entrée) 
 - `convention_envoyee` : Oui, Non, N/A
 - `source` (candidature) : LinkedIn, Indeed, Site entreprise, Welcome to the Jungle,
   Réseau, Forum / Salon, Autre
-- Contacts : `type_contact` (Email, LinkedIn, Téléphone, Autre),
+- Contacts : `email`, `telephone`, `linkedin` sont des champs libres séparés
+  (pas de liste fermée) - un contact n'affiche que les champs non vides,
   `statut_contact` (À contacter, Contacté, Répondu, Pas de réponse),
   `source` (Site entreprise, Article / Presse, LinkedIn (recherche publique), Réseau, Autre)
 

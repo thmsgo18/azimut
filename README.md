@@ -102,10 +102,11 @@ A spreadsheet can track a handful of applications for a while. It stops working 
 
 **Organization**
 - **Companies** with context and news notes; detects probable duplicates ("Mistral" / "Mistral AI") and **merges them in one click**.
-- **Contacts** with an outreach status. Opening a company shows its contacts and its applications right there.
+- **Contacts** with dedicated email, phone, and LinkedIn fields (never a single catch-all field) and an outreach status. Opening a company shows its contacts and its applications right there.
 - **Global search** (shortcut <kbd>⌘K</kbd>) across everything - titles, notes, job text, contacts - color-coded by result type.
 - **Near-duplicate detection** when creating an application (a similar title, or the same job link once tracking params are stripped): a simple warning, never a block.
 - **Read-only detail views**: clicking an application, a company, or a contact opens a clean, read-only sheet - links (the job posting, the portal, a company's website) are just clickable, nothing gets edited by accident. An explicit **Modify** button switches to the edit form.
+- **Bilingual interface** (French / English): switch it in Réglages, applies immediately across the whole interface. Values stored in the database (status, source…) stay French internally - only the display changes.
 
 **Insights**
 - **Dashboard**: counts, breakdown by status and sub-domain, follow-ups due, upcoming interviews.
@@ -273,7 +274,6 @@ Any out-of-list value is rejected with a clear message listing what's allowed (s
 | `mode_travail` | Présentiel, Hybride, Full remote |
 | `convention_envoyee` | Oui, Non, N/A |
 | `source` (application) | LinkedIn, Indeed, Site entreprise, Welcome to the Jungle, Réseau, Forum / Salon, Autre |
-| `type_contact` | Email, LinkedIn, Téléphone, Autre |
 | `statut_contact` | À contacter, Contacté, Répondu, Pas de réponse |
 | `source` (contact) | Site entreprise, Article / Presse, LinkedIn (recherche publique), Réseau, Autre |
 | `type_document` | CV, Lettre de motivation, Offre (PDF), Portfolio, Autre |

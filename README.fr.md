@@ -102,10 +102,11 @@ Un tableur peut suivre une poignée de candidatures un moment. Il craque dès qu
 
 **Organisation**
 - **Entreprises** avec contexte et actualités ; détection des doublons probables (« Mistral » / « Mistral AI ») et **fusion en un clic**.
-- **Contacts** avec statut de prise de contact. Ouvrir une entreprise affiche directement ses contacts et ses candidatures.
+- **Contacts** avec des champs dédiés email, téléphone et LinkedIn (jamais un seul champ fourre-tout) et un statut de prise de contact. Ouvrir une entreprise affiche directement ses contacts et ses candidatures.
 - **Recherche globale** (raccourci <kbd>⌘K</kbd>) qui fouille tout - postes, notes, textes d'offres, contacts - avec un code couleur par type de résultat.
 - **Détection de quasi-doublons** à la création d'une candidature (intitulé proche, ou même lien d'offre une fois débarrassé du tracking) : un simple avertissement, jamais un blocage.
 - **Fiches en lecture seule** : cliquer sur une candidature, une entreprise ou un contact ouvre une fiche propre, en lecture seule - les liens (l'offre, le portail, le site d'une entreprise) sont juste cliquables, rien ne se modifie par accident. Un bouton **Modifier** explicite bascule vers le formulaire d'édition.
+- **Interface bilingue** (français / anglais) : se change dans Réglages, s'applique immédiatement à toute l'interface. Les valeurs stockées en base (statut, source…) restent en français en interne - seul l'affichage change.
 
 **Pilotage**
 - **Tableau de bord** : compteurs, répartition par statut et sous-domaine, relances à faire, entretiens à venir.
@@ -273,7 +274,6 @@ Toute valeur hors liste est refusée avec un message clair listant les valeurs p
 | `mode_travail` | Présentiel, Hybride, Full remote |
 | `convention_envoyee` | Oui, Non, N/A |
 | `source` (candidature) | LinkedIn, Indeed, Site entreprise, Welcome to the Jungle, Réseau, Forum / Salon, Autre |
-| `type_contact` | Email, LinkedIn, Téléphone, Autre |
 | `statut_contact` | À contacter, Contacté, Répondu, Pas de réponse |
 | `source` (contact) | Site entreprise, Article / Presse, LinkedIn (recherche publique), Réseau, Autre |
 | `type_document` | CV, Lettre de motivation, Offre (PDF), Portfolio, Autre |

@@ -11,6 +11,7 @@
 const etat = {
   valeurs: null,          // listes de valeurs autorisées (chargées au démarrage)
   ia: null,               // état des réglages IA (clé définie ou non)
+  langue: "fr",           // langue de l'interface, chargée depuis /api/reglages
   modeCandidatures: "kanban",
   filtres: { statut: "", priorite: "", sous_domaine: "", texte: "" },
   agendaBase: null,       // premier jour du mois affiché dans l'agenda
@@ -56,6 +57,48 @@ const COULEURS_STATUT = {
   "Accepté": "var(--st-accepte)",
 };
 
+/* Traduction : t("section.cle", {parametre: valeur}) cherche dans
+   window.LANGUES[etat.langue], retombe sur le français si la clé manque
+   dans une autre langue, puis retourne la clé telle quelle en dernier
+   recours (jamais un crash pour une traduction oubliée). Les fichiers de
+   langue vivent dans static/langues/ (un fichier par langue + un registre -
+   voir static/langues/registre.js pour en ajouter, modifier ou retirer une). */
+function t(cle, parametres) {
+  const chemin = cle.split(".");
+  const chercher = (dico) => chemin.reduce((valeur, morceau) => (valeur && typeof valeur === "object" ? valeur[morceau] : undefined), dico);
+  const langues = window.LANGUES || {};
+  let texte = chercher(langues[etat.langue]) ?? chercher(langues.fr) ?? cle;
+  if (parametres) {
+    for (const [nom, valeur] of Object.entries(parametres)) {
+      texte = texte.split(`{${nom}}`).join(valeur);
+    }
+  }
+  return texte;
+}
+
+/* Traduit toute la partie statique du HTML (barre latérale : jamais
+   régénérée par rendre()) - appelée au démarrage et à chaque changement de
+   langue dans Réglages. */
+function traduireStatique() {
+  document.querySelectorAll("[data-i18n]").forEach((element) => {
+    element.textContent = t(element.dataset.i18n);
+  });
+  document.querySelectorAll("[data-i18n-aria]").forEach((element) => {
+    element.setAttribute("aria-label", t(element.dataset.i18nAria));
+  });
+}
+
+/* Traduit une VALEUR de donnée (statut, priorité, sous-domaine...) pour
+   l'affichage - jamais pour ce qui part vers l'API ou vit dans
+   value="..." d'une <option>, qui restent toujours la valeur canonique en
+   français (voir valeurs.py côté serveur). Absente de la table de la
+   langue courante -> le français lui-même, donc jamais un blanc. */
+function tv(valeur) {
+  if (valeur === null || valeur === undefined || valeur === "") return valeur;
+  const table = (window.LANGUES && window.LANGUES[etat.langue] && window.LANGUES[etat.langue].valeurs) || {};
+  return table[valeur] ?? valeur;
+}
+
 function echapper(texte) {
   const div = document.createElement("div");
   div.textContent = texte == null ? "" : String(texte);
@@ -94,12 +137,12 @@ async function api(chemin, options = {}) {
       body: options.corps ? JSON.stringify(options.corps) : undefined,
     });
   } catch {
-    throw new Error("Le serveur interne ne répond plus - fermer puis relancer Azimut.");
+    throw new Error(t("commun.erreur_serveur_indisponible"));
   }
   let donnees = null;
   try { donnees = await reponse.json(); } catch { /* réponse vide */ }
   if (!reponse.ok) {
-    throw new Error((donnees && donnees.erreur) || "Erreur inattendue du serveur.");
+    throw new Error((donnees && donnees.erreur) || t("commun.erreur_inattendue"));
   }
   return donnees;
 }
@@ -151,7 +194,7 @@ async function rendre() {
     conteneur.innerHTML = await VUES[nom]();
     if (ACTIVATIONS[nom]) ACTIVATIONS[nom]();
   } catch (erreur) {
-    conteneur.innerHTML = `<div class="etat-vide"><div class="titre">Impossible de charger la page</div><p>${echapper(erreur.message)}</p></div>`;
+    conteneur.innerHTML = `<div class="etat-vide"><div class="titre">${echapper(t("commun.page_illisible_titre"))}</div><p>${echapper(erreur.message)}</p></div>`;
   }
 }
 
@@ -182,12 +225,12 @@ async function vueBord() {
   const stats = await api("/api/stats");
   if (stats.total === 0 && stats.total_contacts === 0) {
     return `
-      <div class="entete-vue"><h1>Tableau de bord</h1></div>
+      <div class="entete-vue"><h1>${t("bord.titre")}</h1></div>
       <div class="etat-vide">
         <div class="icone">${ICONES.boussole}</div>
-        <div class="titre">Bienvenue dans Azimut</div>
-        <p>Ajoute ta première candidature de stage pour voir apparaître ton tableau de bord : statuts, relances à faire et entretiens à venir.</p>
-        <button class="btn btn-accent" onclick="ouvrirFormCandidature()">Ajouter ma première candidature</button>
+        <div class="titre">${t("bord.bienvenue_titre")}</div>
+        <p>${t("bord.bienvenue_texte")}</p>
+        <button class="btn btn-accent" onclick="ouvrirFormCandidature()">${t("bord.ajouter_premiere")}</button>
       </div>`;
   }
 
@@ -219,48 +262,48 @@ async function vueBord() {
   return `
     <div class="entete-vue">
       <div>
-        <h1>Tableau de bord</h1>
-        <div class="sous-titre">Vue d'ensemble de ta recherche de stage</div>
+        <h1>${t("bord.titre")}</h1>
+        <div class="sous-titre">${t("bord.sous_titre")}</div>
       </div>
     </div>
     <div class="rangee-kpi">
       <div class="tuile">
-        <div class="tuile-libelle">Candidatures</div>
+        <div class="tuile-libelle">${t("bord.kpi_candidatures")}</div>
         <div class="tuile-valeur">${stats.total}</div>
-        <div class="tuile-detail">dont ${stats.en_cours} en attente de réponse</div>
+        <div class="tuile-detail">${t("bord.kpi_candidatures_detail", { n: stats.en_cours })}</div>
       </div>
       <div class="tuile">
-        <div class="tuile-libelle">Taux de réponse</div>
+        <div class="tuile-libelle">${t("bord.kpi_taux_reponse")}</div>
         <div class="tuile-valeur">${stats.taux_reponse}<span style="font-size:18px;">%</span></div>
-        <div class="tuile-detail">réponses reçues, entretiens inclus</div>
+        <div class="tuile-detail">${t("bord.kpi_taux_reponse_detail")}</div>
       </div>
       <div class="tuile">
-        <div class="tuile-libelle">Entretiens à venir</div>
+        <div class="tuile-libelle">${t("bord.kpi_entretiens")}</div>
         <div class="tuile-valeur">${stats.entretiens_a_venir.length}</div>
-        <div class="tuile-detail">${stats.par_statut["Entretien"]} candidature(s) au stade entretien</div>
+        <div class="tuile-detail">${t("bord.kpi_entretiens_detail", { n: stats.par_statut["Entretien"] })}</div>
       </div>
       <div class="tuile">
-        <div class="tuile-libelle">Contacts</div>
+        <div class="tuile-libelle">${t("bord.kpi_contacts")}</div>
         <div class="tuile-valeur">${stats.total_contacts}</div>
-        <div class="tuile-detail">${stats.contacts_par_statut["Répondu"] || 0} ont répondu</div>
+        <div class="tuile-detail">${t("bord.kpi_contacts_detail", { n: stats.contacts_par_statut["Répondu"] || 0 })}</div>
       </div>
     </div>
     <div class="grille-bord">
       <div class="carte">
-        <h2>Candidatures par statut</h2>
+        <h2>${t("bord.carte_par_statut")}</h2>
         ${barres(stats.par_statut, etat.valeurs.statuts)}
       </div>
       <div class="carte">
-        <h2>Par sous-domaine</h2>
-        ${Object.keys(stats.par_domaine).length ? barres(stats.par_domaine) : `<div class="sous-titre">Renseigne le sous-domaine de tes candidatures pour voir la répartition.</div>`}
+        <h2>${t("bord.carte_par_domaine")}</h2>
+        ${Object.keys(stats.par_domaine).length ? barres(stats.par_domaine) : `<div class="sous-titre">${t("bord.par_domaine_vide")}</div>`}
       </div>
       <div class="carte">
-        <h2>Relances à faire</h2>
-        ${relances || `<div class="sous-titre">Rien à relancer aujourd'hui.</div>`}
+        <h2>${t("bord.carte_relances")}</h2>
+        ${relances || `<div class="sous-titre">${t("bord.relances_vide")}</div>`}
       </div>
       <div class="carte">
-        <h2>Entretiens à venir</h2>
-        ${entretiens || `<div class="sous-titre">Aucun entretien planifié pour l'instant.</div>`}
+        <h2>${t("bord.carte_entretiens")}</h2>
+        ${entretiens || `<div class="sous-titre">${t("bord.entretiens_vide")}</div>`}
       </div>
     </div>`;
 }
@@ -287,10 +330,10 @@ function candidatureVisible(cand) {
 function carteCandidature(cand) {
   const puces = [];
   if (cand.priorite === "Haute") {
-    puces.push(`<span class="puce puce-priorite-Haute">Priorité haute</span>`);
+    puces.push(`<span class="puce puce-priorite-Haute">${t("candidatures.priorite_haute")}</span>`);
   }
   if (cand.sous_domaine) {
-    puces.push(`<span class="puce">${echapper(cand.sous_domaine)}</span>`);
+    puces.push(`<span class="puce">${echapper(tv(cand.sous_domaine))}</span>`);
   }
   return `
     <article class="carte-cand" data-id="${cand.id}">
@@ -306,7 +349,7 @@ function carteCandidature(cand) {
 function optionsSelect(liste, selection, avecVide = true) {
   const vide = avecVide ? `<option value="">-</option>` : "";
   return vide + liste
-    .map((v) => `<option value="${echapper(v)}"${v === selection ? " selected" : ""}>${echapper(v)}</option>`)
+    .map((v) => `<option value="${echapper(v)}"${v === selection ? " selected" : ""}>${echapper(tv(v))}</option>`)
     .join("");
 }
 
@@ -315,18 +358,18 @@ async function vueCandidatures() {
   const v = etat.valeurs;
   const filtres = `
     <div class="filtres">
-      <input type="text" id="filtre-texte" placeholder="Rechercher…" value="${echapper(etat.filtres.texte)}">
+      <input type="text" id="filtre-texte" placeholder="${t("candidatures.rechercher_placeholder")}" value="${echapper(etat.filtres.texte)}">
       <select id="filtre-statut">
-        <option value="">Tous les statuts</option>
-        ${v.statuts.map((s) => `<option${etat.filtres.statut === s ? " selected" : ""}>${echapper(s)}</option>`).join("")}
+        <option value="">${t("candidatures.tous_statuts")}</option>
+        ${v.statuts.map((s) => `<option${etat.filtres.statut === s ? " selected" : ""}>${echapper(tv(s))}</option>`).join("")}
       </select>
       <select id="filtre-priorite">
-        <option value="">Toutes priorités</option>
-        ${v.priorites.map((p) => `<option${etat.filtres.priorite === p ? " selected" : ""}>${echapper(p)}</option>`).join("")}
+        <option value="">${t("candidatures.toutes_priorites")}</option>
+        ${v.priorites.map((p) => `<option${etat.filtres.priorite === p ? " selected" : ""}>${echapper(tv(p))}</option>`).join("")}
       </select>
       <select id="filtre-domaine">
-        <option value="">Tous sous-domaines</option>
-        ${v.sous_domaines.map((d) => `<option${etat.filtres.sous_domaine === d ? " selected" : ""}>${echapper(d)}</option>`).join("")}
+        <option value="">${t("candidatures.tous_sous_domaines")}</option>
+        ${v.sous_domaines.map((d) => `<option${etat.filtres.sous_domaine === d ? " selected" : ""}>${echapper(tv(d))}</option>`).join("")}
       </select>
     </div>`;
 
@@ -336,9 +379,9 @@ async function vueCandidatures() {
     corps = `
       <div class="etat-vide">
         <div class="icone">${ICONES.candidatures}</div>
-        <div class="titre">${filtreActif ? "Aucune candidature ne correspond aux filtres" : "Aucune candidature pour l'instant"}</div>
-        <p>${filtreActif ? "Essaie d'élargir ou de réinitialiser les filtres." : "Ajoute ta première candidature pour démarrer le suivi."}</p>
-        ${filtreActif ? "" : `<button class="btn btn-accent" onclick="ouvrirFormCandidature()">Ajouter une candidature</button>`}
+        <div class="titre">${filtreActif ? t("candidatures.vide_filtre_titre") : t("candidatures.vide_titre")}</div>
+        <p>${filtreActif ? t("candidatures.vide_filtre_texte") : t("candidatures.vide_texte")}</p>
+        ${filtreActif ? "" : `<button class="btn btn-accent" onclick="ouvrirFormCandidature()">${t("candidatures.ajouter_bouton")}</button>`}
       </div>`;
   } else if (etat.modeCandidatures === "kanban") {
     corps = `<div class="kanban">${v.statuts
@@ -347,7 +390,7 @@ async function vueCandidatures() {
         return `
         <section class="colonne" data-statut="${echapper(statut)}" style="--couleur-statut:${COULEURS_STATUT[statut]}">
           <div class="colonne-entete">
-            <span class="point"></span>${echapper(statut)}
+            <span class="point"></span>${echapper(tv(statut))}
             <span class="compte">${cartes.length}</span>
           </div>
           <div class="colonne-cartes">${cartes.map(carteCandidature).join("")}</div>
@@ -363,8 +406,8 @@ async function vueCandidatures() {
     corps = `
       <div class="enveloppe-tableau"><table class="tableau">
         <thead><tr>
-          <th></th><th>Entreprise</th><th>Poste</th><th>Statut</th><th>Priorité</th>
-          <th>Envoyée le</th><th>Relance prévue</th><th>Ville</th>
+          <th></th><th>${t("candidatures.col_entreprise")}</th><th>${t("candidatures.col_poste")}</th><th>${t("candidatures.col_statut")}</th><th>${t("candidatures.col_priorite")}</th>
+          <th>${t("candidatures.col_envoyee_le")}</th><th>${t("candidatures.col_relance_prevue")}</th><th>${t("candidatures.col_ville")}</th>
         </tr></thead>
         <tbody>
           ${liste
@@ -376,11 +419,11 @@ async function vueCandidatures() {
                        ${etat.selectionComparaison.has(cand.id) ? "checked" : ""}>
               </td>
               <td class="cellule-principale">${echapper(cand.entreprise)}
-                ${cand.lien_dernier_etat === "mort" ? `<span class="puce puce-lien-mort" title="Le lien de l'offre ne répond plus">Lien mort</span>` : ""}
+                ${cand.lien_dernier_etat === "mort" ? `<span class="puce puce-lien-mort" title="${t("candidatures.lien_mort_titre")}">${t("candidatures.lien_mort")}</span>` : ""}
               </td>
               <td>${echapper(cand.poste)}</td>
-              <td><span class="puce puce-statut" style="--couleur-statut:${COULEURS_STATUT[cand.statut]}"><span class="point"></span>${echapper(cand.statut)}</span></td>
-              <td class="cellule-secondaire">${echapper(cand.priorite || "")}</td>
+              <td><span class="puce puce-statut" style="--couleur-statut:${COULEURS_STATUT[cand.statut]}"><span class="point"></span>${echapper(tv(cand.statut))}</span></td>
+              <td class="cellule-secondaire">${echapper(tv(cand.priorite || ""))}</td>
               <td class="cellule-date">${dateFr(cand.date_envoi)}</td>
               <td class="cellule-date">${dateFr(cand.date_relance_prevue)}</td>
               <td class="cellule-secondaire">${echapper(cand.ville || "")}</td>
@@ -393,19 +436,19 @@ async function vueCandidatures() {
 
   const barreComparaison = etat.modeCandidatures === "liste" && etat.selectionComparaison.size >= 2
     ? `<div class="barre-comparaison">
-        <span>${etat.selectionComparaison.size} candidatures sélectionnées</span>
-        <button class="btn btn-accent" onclick="location.hash='#/comparer'">Comparer</button>
+        <span>${t("candidatures.selectionnees", { n: etat.selectionComparaison.size })}</span>
+        <button class="btn btn-accent" onclick="location.hash='#/comparer'">${t("candidatures.comparer")}</button>
        </div>`
     : "";
 
   return `
     <div class="entete-vue">
-      <h1>Candidatures</h1>
+      <h1>${t("nav.candidatures")}</h1>
       <div class="bascule">
-        <button data-mode="kanban" class="${etat.modeCandidatures === "kanban" ? "actif" : ""}">Pipeline</button>
-        <button data-mode="liste" class="${etat.modeCandidatures === "liste" ? "actif" : ""}">Liste</button>
+        <button data-mode="kanban" class="${etat.modeCandidatures === "kanban" ? "actif" : ""}">${t("candidatures.pipeline")}</button>
+        <button data-mode="liste" class="${etat.modeCandidatures === "liste" ? "actif" : ""}">${t("candidatures.liste")}</button>
       </div>
-      <button class="btn btn-accent" onclick="ouvrirFormCandidature()">+ Ajouter</button>
+      <button class="btn btn-accent" onclick="ouvrirFormCandidature()">${t("commun.ajouter")}</button>
     </div>
     ${filtres}
     ${barreComparaison}
@@ -503,7 +546,7 @@ function activerCandidatures() {
           if (statut && statut !== statutActuel) {
             try {
               await api(`/api/candidatures/${numero}`, { methode: "PATCH", corps: { statut } });
-              toast(`Statut mis à jour : ${statut}`);
+              toast(t("candidatures.statut_mis_a_jour", { statut: tv(statut) }));
               rendre();
             } catch (erreur) {
               toast(erreur.message, true);
@@ -526,12 +569,11 @@ async function vueRelances() {
   const liste = await api("/api/relances");
   if (!liste.length) {
     return `
-      <div class="entete-vue"><h1>Relances</h1></div>
+      <div class="entete-vue"><h1>${t("nav.relances")}</h1></div>
       <div class="etat-vide">
         <div class="icone">${ICONES.candidatures}</div>
-        <div class="titre">Rien à relancer aujourd'hui</div>
-        <p>Les candidatures dont la date de relance prévue est aujourd'hui ou dépassée
-        apparaîtront ici, des plus urgentes aux plus récentes.</p>
+        <div class="titre">${t("relances.vide_titre")}</div>
+        <p>${t("relances.vide_texte")}</p>
       </div>`;
   }
   const aujourdHui = dateISOLocale(new Date());
@@ -543,20 +585,20 @@ async function vueRelances() {
         <div class="ligne-relance-info" onclick="ouvrirDetailCandidature(${cand.id})">
           <div class="ligne-relance-titre">
             <strong>${echapper(cand.entreprise)}</strong> - ${echapper(cand.poste)}
-            ${cand.priorite === "Haute" ? `<span class="puce puce-priorite-Haute">Priorité haute</span>` : ""}
+            ${cand.priorite === "Haute" ? `<span class="puce puce-priorite-Haute">${t("candidatures.priorite_haute")}</span>` : ""}
           </div>
           <div class="cellule-secondaire">
-            ${enRetard ? `En retard depuis le ${dateFr(cand.date_relance_prevue)}` : "Prévue aujourd'hui"}
-            · ${echapper(cand.statut)} · ${cand.nb_relances || 0} relance(s) déjà faite(s)
+            ${enRetard ? t("relances.en_retard_depuis", { date: dateFr(cand.date_relance_prevue) }) : t("relances.prevue_aujourdhui")}
+            · ${echapper(tv(cand.statut))} · ${t("relances.relances_deja_faites", { n: cand.nb_relances || 0 })}
           </div>
         </div>
-        <button type="button" class="btn btn-accent" onclick="marquerRelance(${cand.id})">Relancé</button>
+        <button type="button" class="btn btn-accent" onclick="marquerRelance(${cand.id})">${t("relances.relance_bouton")}</button>
       </div>`;
     })
     .join("");
   return `
     <div class="entete-vue">
-      <div><h1>Relances</h1><div class="sous-titre">${liste.length} à faire, des plus urgentes aux plus récentes</div></div>
+      <div><h1>${t("nav.relances")}</h1><div class="sous-titre">${t("relances.sous_titre", { n: liste.length })}</div></div>
     </div>
     <div class="carte liste-relances">${lignes}</div>`;
 }
@@ -566,7 +608,7 @@ function activerRelances() { /* liens inline */ }
 async function marquerRelance(id) {
   try {
     await api(`/api/candidatures/${id}/relancer`, { methode: "POST" });
-    toast("Relance enregistrée");
+    toast(t("relances.enregistree"));
     rendre();
   } catch (erreur) {
     toast(erreur.message, true);
@@ -577,31 +619,35 @@ async function marquerRelance(id) {
    Comparateur : plusieurs candidatures côte à côte
    ======================================================================== */
 
-const CRITERES_COMPARATEUR = [
-  ["statut", "Statut"],
-  ["priorite", "Priorité"],
-  ["sous_domaine", "Sous-domaine"],
-  ["ville", "Ville"],
-  ["mode_travail", "Mode de travail"],
-  ["duree", "Durée"],
-  ["gratification", "Gratification (€/mois)"],
-  ["date_debut_souhaitee", "Début souhaité"],
-  ["convention_envoyee", "Convention envoyée"],
-  ["source", "Source"],
-  ["date_envoi", "Envoyée le"],
-  ["date_entretien", "Entretien le"],
-];
+const CHAMPS_COMPARATEUR_ENUM = new Set(["statut", "priorite", "sous_domaine", "mode_travail", "convention_envoyee", "source"]);
+
+function criteresComparateur() {
+  return [
+    ["statut", t("candidatures.col_statut")],
+    ["priorite", t("candidatures.col_priorite")],
+    ["sous_domaine", t("comparateur.sous_domaine")],
+    ["ville", t("candidatures.col_ville")],
+    ["mode_travail", t("comparateur.mode_travail")],
+    ["duree", t("comparateur.duree")],
+    ["gratification", t("comparateur.gratification")],
+    ["date_debut_souhaitee", t("comparateur.debut_souhaite")],
+    ["convention_envoyee", t("comparateur.convention_envoyee")],
+    ["source", t("comparateur.source")],
+    ["date_envoi", t("candidatures.col_envoyee_le")],
+    ["date_entretien", t("comparateur.entretien_le")],
+  ];
+}
 
 async function vueComparateur() {
   const ids = [...etat.selectionComparaison];
   if (ids.length < 2) {
     return `
-      <div class="entete-vue"><h1>Comparer</h1></div>
+      <div class="entete-vue"><h1>${t("comparateur.titre")}</h1></div>
       <div class="etat-vide">
         <div class="icone">${ICONES.candidatures}</div>
-        <div class="titre">Aucune sélection à comparer</div>
-        <p>Dans Candidatures (vue liste), coche au moins deux candidatures puis clique « Comparer ».</p>
-        <button class="btn btn-accent" onclick="location.hash='#/candidatures'">Aller aux candidatures</button>
+        <div class="titre">${t("comparateur.vide_titre")}</div>
+        <p>${t("comparateur.vide_texte")}</p>
+        <button class="btn btn-accent" onclick="location.hash='#/candidatures'">${t("comparateur.aller_aux_candidatures")}</button>
       </div>`;
   }
   const toutes = await api("/api/candidatures");
@@ -610,9 +656,10 @@ async function vueComparateur() {
     if (valeur === null || valeur === undefined || valeur === "") return "-";
     if (cle === "gratification") return `${valeur} €/mois`;
     if (cle.startsWith("date_")) return dateFr(valeur);
+    if (CHAMPS_COMPARATEUR_ENUM.has(cle)) return echapper(tv(valeur));
     return echapper(valeur);
   };
-  const lignes = CRITERES_COMPARATEUR
+  const lignes = criteresComparateur()
     .map(
       ([cle, libelle]) => `
       <tr>
@@ -623,12 +670,12 @@ async function vueComparateur() {
     .join("");
   return `
     <div class="entete-vue">
-      <h1>Comparer</h1>
-      <button class="btn" onclick="viderComparateur()">Vider la sélection</button>
+      <h1>${t("comparateur.titre")}</h1>
+      <button class="btn" onclick="viderComparateur()">${t("comparateur.vider_selection")}</button>
     </div>
     <div class="enveloppe-tableau"><table class="tableau tableau-comparateur">
       <thead><tr>
-        <th>Critère</th>
+        <th>${t("comparateur.critere")}</th>
         ${selection.map((cand) => `<th>${echapper(cand.entreprise)}<div class="cellule-secondaire">${echapper(cand.poste)}</div></th>`).join("")}
       </tr></thead>
       <tbody>${lignes}</tbody>
@@ -685,7 +732,7 @@ function champMotDePasse(nom, libelle, valeur = "") {
       <label for="champ-${nom}">${libelle}</label>
       <div class="champ-mdp">
         <input type="password" id="champ-${nom}" name="${nom}" value="${echapper(valeur ?? "")}" autocomplete="off">
-        <button type="button" class="btn btn-discret btn-oeil" data-cible="champ-${nom}">Afficher</button>
+        <button type="button" class="btn btn-discret btn-oeil" data-cible="champ-${nom}">${t("commun.afficher")}</button>
       </div>
     </div>`;
 }
@@ -713,7 +760,7 @@ function champAfficheMotDePasse(nom, libelle, valeur) {
       <label>${libelle}</label>
       <div class="champ-mdp">
         <input type="password" id="champ-${nom}" value="${echapper(valeur ?? "")}" readonly>
-        <button type="button" class="btn btn-discret btn-oeil" data-cible="champ-${nom}">Afficher</button>
+        <button type="button" class="btn btn-discret btn-oeil" data-cible="champ-${nom}">${t("commun.afficher")}</button>
       </div>
     </div>`;
 }
@@ -735,7 +782,7 @@ async function ouvrirFormCandidature(cand = null) {
     const listeEntreprises = await api("/api/entreprises");
     champEntreprise = `
       <div class="champ">
-        <label for="champ-entreprise">Entreprise *</label>
+        <label for="champ-entreprise">${t("formulaire.entreprise_requis")}</label>
         <input type="text" id="champ-entreprise" name="entreprise" list="liste-entreprises" required>
         <datalist id="liste-entreprises">
           ${listeEntreprises.map((ent) => `<option value="${echapper(ent.nom)}">`).join("")}
@@ -744,7 +791,7 @@ async function ouvrirFormCandidature(cand = null) {
   } else {
     champEntreprise = `
       <div class="champ">
-        <label>Entreprise</label>
+        <label>${t("formulaire.entreprise")}</label>
         <input type="text" value="${echapper(cand.entreprise)}" disabled>
       </div>`;
   }
@@ -752,30 +799,30 @@ async function ouvrirFormCandidature(cand = null) {
   const corps = `
     <form id="form-candidature" class="grille-form" onsubmit="return false;">
       ${champEntreprise}
-      ${champTexte("poste", "Poste / intitulé *", cand.poste)}
-      ${champSelect("statut", "Statut", v.statuts, cand.statut || "À préparer", false)}
-      ${champSelect("priorite", "Priorité", v.priorites, cand.priorite || "Moyenne", false)}
-      ${champSelect("sous_domaine", "Sous-domaine", v.sous_domaines, cand.sous_domaine)}
-      ${champSelect("type_candidature", "Type de candidature", v.types_candidature, cand.type_candidature)}
-      ${champSelect("source", "Source", v.sources_candidature, cand.source)}
-      ${champTexte("date_envoi", "Date d'envoi", cand.date_envoi, "date")}
-      ${champTexte("date_relance_prevue", "Relance prévue le", cand.date_relance_prevue, "date")}
-      ${champTexte("nb_relances", "Nb de relances", cand.nb_relances ?? (creation ? 0 : ""), "number")}
-      ${champTexte("date_reponse", "Réponse reçue le", cand.date_reponse, "date")}
-      ${champTexte("date_entretien", "Entretien le", cand.date_entretien, "date")}
-      ${champTexte("date_debut_souhaitee", "Début souhaité le", cand.date_debut_souhaitee, "date")}
-      ${champTexte("duree", "Durée", cand.duree)}
-      ${champTexte("gratification", "Gratification (€/mois)", cand.gratification, "number")}
-      ${champTexte("ville", "Ville", cand.ville)}
-      ${champSelect("mode_travail", "Mode de travail", v.modes_travail, cand.mode_travail)}
-      ${champSelect("convention_envoyee", "Convention envoyée", v.conventions, cand.convention_envoyee || "Non", false)}
-      ${champTexte("lien_offre", "Lien de l'offre", cand.lien_offre, "url", true)}
-      ${champTexte("portail_url", "Portail de candidature (URL de connexion)", cand.portail_url, "url", true)}
-      ${champTexte("portail_identifiant", "Identifiant du portail", cand.portail_identifiant)}
-      ${champMotDePasse("portail_mdp", "Mot de passe du portail", cand.portail_mdp)}
-      ${champZone("texte_offre", "Texte de l'offre (archive)", cand.texte_offre)}
-      ${champZone("notes", "Notes", cand.notes)}
-      ${creation ? "" : champZone("notes_entretien", "Notes d'entretien", cand.notes_entretien)}
+      ${champTexte("poste", t("formulaire.poste_requis"), cand.poste)}
+      ${champSelect("statut", t("candidatures.col_statut"), v.statuts, cand.statut || "À préparer", false)}
+      ${champSelect("priorite", t("candidatures.col_priorite"), v.priorites, cand.priorite || "Moyenne", false)}
+      ${champSelect("sous_domaine", t("comparateur.sous_domaine"), v.sous_domaines, cand.sous_domaine)}
+      ${champSelect("type_candidature", t("formulaire.type_candidature"), v.types_candidature, cand.type_candidature)}
+      ${champSelect("source", t("comparateur.source"), v.sources_candidature, cand.source)}
+      ${champTexte("date_envoi", t("formulaire.date_envoi"), cand.date_envoi, "date")}
+      ${champTexte("date_relance_prevue", t("formulaire.relance_prevue_le"), cand.date_relance_prevue, "date")}
+      ${champTexte("nb_relances", t("formulaire.nb_relances"), cand.nb_relances ?? (creation ? 0 : ""), "number")}
+      ${champTexte("date_reponse", t("formulaire.reponse_recue_le"), cand.date_reponse, "date")}
+      ${champTexte("date_entretien", t("comparateur.entretien_le"), cand.date_entretien, "date")}
+      ${champTexte("date_debut_souhaitee", t("comparateur.debut_souhaite"), cand.date_debut_souhaitee, "date")}
+      ${champTexte("duree", t("comparateur.duree"), cand.duree)}
+      ${champTexte("gratification", t("comparateur.gratification"), cand.gratification, "number")}
+      ${champTexte("ville", t("candidatures.col_ville"), cand.ville)}
+      ${champSelect("mode_travail", t("comparateur.mode_travail"), v.modes_travail, cand.mode_travail)}
+      ${champSelect("convention_envoyee", t("comparateur.convention_envoyee"), v.conventions, cand.convention_envoyee || "Non", false)}
+      ${champTexte("lien_offre", t("formulaire.lien_offre"), cand.lien_offre, "url", true)}
+      ${champTexte("portail_url", t("formulaire.portail_url"), cand.portail_url, "url", true)}
+      ${champTexte("portail_identifiant", t("formulaire.portail_identifiant"), cand.portail_identifiant)}
+      ${champMotDePasse("portail_mdp", t("formulaire.portail_mdp"), cand.portail_mdp)}
+      ${champZone("texte_offre", t("formulaire.texte_offre"), cand.texte_offre)}
+      ${champZone("notes", t("formulaire.notes"), cand.notes)}
+      ${creation ? "" : champZone("notes_entretien", t("formulaire.notes_entretien"), cand.notes_entretien)}
     </form>`;
 
   // À la création : zone d'analyse IA (si une clé API est configurée dans Réglages).
@@ -784,17 +831,17 @@ async function ouvrirFormCandidature(cand = null) {
     zoneIA = etat.ia && etat.ia.cle_api_definie
       ? `
       <div class="zone-ia">
-        <label for="ia-texte">Pré-remplir depuis une offre (IA)</label>
-        <textarea id="ia-texte" placeholder="Colle ici le texte complet de l'offre - l'IA propose, tu relis, rien n'est enregistré sans toi."></textarea>
+        <label for="ia-texte">${t("formulaire.ia_prerempli_label")}</label>
+        <textarea id="ia-texte" placeholder="${t("formulaire.ia_placeholder")}"></textarea>
         <div class="zone-ia-actions">
-          <input type="url" id="ia-lien" placeholder="Lien de l'offre (optionnel)">
-          <button type="button" class="btn btn-accent" id="btn-analyser">Analyser</button>
+          <input type="url" id="ia-lien" placeholder="${t("formulaire.lien_offre_optionnel")}">
+          <button type="button" class="btn btn-accent" id="btn-analyser">${t("formulaire.analyser")}</button>
         </div>
       </div>`
       : `
-      <p class="astuce-ia">Astuce : ajoute une clé API dans
-        <a class="lien-detail" href="#/reglages" onclick="fermerPanneau()">Réglages</a>
-        pour pré-remplir ce formulaire en collant le texte d'une offre.</p>`;
+      <p class="astuce-ia">${t("formulaire.astuce_ia_debut")}
+        <a class="lien-detail" href="#/reglages" onclick="fermerPanneau()">${t("nav.reglages")}</a>
+        ${t("formulaire.astuce_ia_fin")}</p>`;
   }
 
   // À la création : joindre tout de suite un ou plusieurs fichiers (offre en
@@ -803,7 +850,7 @@ async function ouvrirFormCandidature(cand = null) {
   if (creation) {
     zoneDocuments = `
       <div class="zone-ia">
-        <label for="fichiers-a-joindre">Joindre des fichiers (offre en PDF, CV, lettre…)</label>
+        <label for="fichiers-a-joindre">${t("formulaire.joindre_fichiers")}</label>
         <div class="zone-ia-actions">
           <select id="fichiers-type" style="max-width:220px;">${optionsSelect(v.types_document, "Offre (PDF)", false)}</select>
           <input type="file" id="fichiers-a-joindre" multiple style="flex:1;">
@@ -822,15 +869,15 @@ async function ouvrirFormCandidature(cand = null) {
   }
 
   const pied = creation
-    ? `<button class="btn" onclick="fermerPanneau()">Annuler</button>
-       <button class="btn btn-accent" id="btn-enregistrer">Ajouter la candidature</button>`
-    : `<button class="btn btn-danger" id="btn-supprimer">Supprimer</button>
-       <button class="btn" id="btn-fiche">Fiche entretien</button>
-       <button class="btn" id="btn-mode-entretien">Mode entretien</button>
-       <button class="btn btn-accent" id="btn-enregistrer">Enregistrer</button>`;
+    ? `<button class="btn" onclick="fermerPanneau()">${t("commun.annuler")}</button>
+       <button class="btn btn-accent" id="btn-enregistrer">${t("formulaire.ajouter_candidature")}</button>`
+    : `<button class="btn btn-danger" id="btn-supprimer">${t("commun.supprimer")}</button>
+       <button class="btn" id="btn-fiche">${t("formulaire.fiche_entretien")}</button>
+       <button class="btn" id="btn-mode-entretien">${t("formulaire.mode_entretien")}</button>
+       <button class="btn btn-accent" id="btn-enregistrer">${t("commun.enregistrer")}</button>`;
 
   ouvrirPanneau(
-    creation ? "Nouvelle candidature" : `${cand.entreprise} - modifier`,
+    creation ? t("formulaire.nouvelle_candidature") : t("commun.titre_modifier", { nom: cand.entreprise }),
     zoneIA + corps + zoneDocuments + sectionsSupplementaires,
     pied
   );
@@ -841,9 +888,9 @@ async function ouvrirFormCandidature(cand = null) {
     if (boutonAnalyser) {
       boutonAnalyser.addEventListener("click", async () => {
         const texte = document.getElementById("ia-texte").value;
-        if (!texte.trim()) { toast("Colle d'abord le texte de l'offre.", true); return; }
+        if (!texte.trim()) { toast(t("formulaire.coller_texte_offre_erreur"), true); return; }
         boutonAnalyser.disabled = true;
-        boutonAnalyser.textContent = "Analyse en cours…";
+        boutonAnalyser.textContent = t("formulaire.analyse_en_cours");
         try {
           const proposition = await api("/api/agent/analyser", {
             methode: "POST",
@@ -852,13 +899,13 @@ async function ouvrirFormCandidature(cand = null) {
           remplirDepuisProposition(proposition);
           etat.propositionEntreprise = proposition.entreprise && proposition.entreprise.nom
             ? proposition.entreprise : null;
-          toast("Formulaire pré-rempli - relis et corrige avant d'ajouter.");
+          toast(t("formulaire.pre_rempli"));
           if (proposition.avertissement) toast(proposition.avertissement, true);
         } catch (erreur) {
           toast(erreur.message, true);
         } finally {
           boutonAnalyser.disabled = false;
-          boutonAnalyser.textContent = "Analyser";
+          boutonAnalyser.textContent = t("formulaire.analyser");
         }
       });
     }
@@ -884,7 +931,7 @@ async function ouvrirFormCandidature(cand = null) {
           return;
         }
         const creee = await api("/api/candidatures", { methode: "POST", corps: donnees });
-        toast(`Candidature ajoutée : ${creee.poste} chez ${creee.entreprise}`);
+        toast(t("formulaire.candidature_ajoutee", { poste: creee.poste, entreprise: creee.entreprise }));
         // Fichiers joints (offre en PDF, CV…) : envoyés maintenant que la
         // candidature existe.
         const fichiersAJoindre = document.getElementById("fichiers-a-joindre")?.files;
@@ -906,7 +953,7 @@ async function ouvrirFormCandidature(cand = null) {
         }
       } else {
         await api(`/api/candidatures/${cand.id}`, { methode: "PATCH", corps: donnees });
-        toast("Candidature enregistrée");
+        toast(t("formulaire.candidature_enregistree"));
       }
       fermerPanneau();
       rendre();
@@ -918,13 +965,13 @@ async function ouvrirFormCandidature(cand = null) {
   if (!creation) {
     document.getElementById("btn-supprimer").addEventListener("click", async () => {
       const accord = await confirmer(
-        "Supprimer cette candidature ?",
-        `« ${cand.poste} » chez ${cand.entreprise} sera définitivement supprimée de la base.`
+        t("formulaire.supprimer_candidature_titre"),
+        t("formulaire.supprimer_candidature_texte", { poste: cand.poste, entreprise: cand.entreprise })
       );
       if (!accord) return;
       try {
         await api(`/api/candidatures/${cand.id}`, { methode: "DELETE" });
-        toast("Candidature supprimée");
+        toast(t("formulaire.candidature_supprimee"));
         fermerPanneau();
         rendre();
       } catch (erreur) {
@@ -961,10 +1008,10 @@ function sectionsCandidature(numero, journal, docs) {
     .map(
       (doc) => `
     <div class="ligne-document">
-      <span class="puce">${echapper(doc.type_document || "Autre")}</span>
+      <span class="puce">${echapper(tv(doc.type_document || "Autre"))}</span>
       <a class="lien-detail" href="/api/documents/${doc.id}/telecharger">${echapper(doc.nom_fichier)}</a>
       <span class="cellule-secondaire">${dateFr(doc.date_ajout)}</span>
-      <button type="button" class="btn btn-danger btn-mini" onclick="supprimerDocument(${doc.id}, ${numero})">Supprimer</button>
+      <button type="button" class="btn btn-danger btn-mini" onclick="supprimerDocument(${doc.id}, ${numero})">${t("commun.supprimer")}</button>
     </div>`
     )
     .join("");
@@ -978,23 +1025,23 @@ function sectionsCandidature(numero, journal, docs) {
     )
     .join("");
   return `
-    <h3 class="section-panneau">Documents envoyés</h3>
-    ${lignesDocs || `<p class="sous-titre">Aucun document lié à cette candidature.</p>`}
+    <h3 class="section-panneau">${t("formulaire.documents_envoyes")}</h3>
+    ${lignesDocs || `<p class="sous-titre">${t("formulaire.aucun_document")}</p>`}
     <div class="ajout-document">
       <select id="doc-type-panneau">${optionsSelect(etat.valeurs.types_document, null, false)}</select>
       <input type="file" id="doc-fichier-panneau" multiple>
       <button type="button" class="btn" id="btn-doc-panneau"
         onclick="televerserDocument(${numero}, document.getElementById('doc-fichier-panneau').files, document.getElementById('doc-type-panneau').value, () => ouvrirDetailCandidature(${numero}))">
-        Ajouter</button>
+        ${t("commun.ajouter_simple")}</button>
     </div>
-    <h3 class="section-panneau">Historique</h3>
-    <div class="journal">${lignesJournal || `<p class="sous-titre">Aucun événement enregistré.</p>`}</div>`;
+    <h3 class="section-panneau">${t("formulaire.historique")}</h3>
+    <div class="journal">${lignesJournal || `<p class="sous-titre">${t("formulaire.aucun_evenement")}</p>`}</div>`;
 }
 
 function contenuFicheCandidature(cand) {
   const lienOffre = cand.lien_offre
     ? `<a class="lien-detail" href="${echapper(cand.lien_offre)}" target="_blank" rel="noopener">${echapper(cand.lien_offre)}</a>` +
-      (cand.lien_dernier_etat === "mort" ? ` <span class="puce puce-lien-mort">Lien mort</span>` : "")
+      (cand.lien_dernier_etat === "mort" ? ` <span class="puce puce-lien-mort">${t("candidatures.lien_mort")}</span>` : "")
     : null;
   const portailUrl = cand.portail_url
     ? `<a class="lien-detail" href="${echapper(cand.portail_url)}" target="_blank" rel="noopener">${echapper(cand.portail_url)}</a>`
@@ -1006,31 +1053,31 @@ function contenuFicheCandidature(cand) {
         <h2>${echapper(cand.poste)}</h2>
         <p class="fiche-soustitre">${echapper(cand.entreprise)}${cand.ville ? " · " + echapper(cand.ville) : ""}</p>
       </div>
-      ${cand.statut ? `<span class="puce puce-statut" style="--couleur-statut:${COULEURS_STATUT[cand.statut]}"><span class="point"></span>${echapper(cand.statut)}</span>` : ""}
+      ${cand.statut ? `<span class="puce puce-statut" style="--couleur-statut:${COULEURS_STATUT[cand.statut]}"><span class="point"></span>${echapper(tv(cand.statut))}</span>` : ""}
     </div>
     <div class="grille-form">
-      ${champAffiche("Priorité", cand.priorite ? echapper(cand.priorite) : null)}
-      ${champAffiche("Sous-domaine", cand.sous_domaine ? echapper(cand.sous_domaine) : null)}
-      ${champAffiche("Type de candidature", cand.type_candidature ? echapper(cand.type_candidature) : null)}
-      ${champAffiche("Source", cand.source ? echapper(cand.source) : null)}
-      ${champAffiche("Envoyée le", dateFr(cand.date_envoi))}
-      ${champAffiche("Relance prévue le", dateFr(cand.date_relance_prevue))}
-      ${champAffiche("Nb de relances", cand.nb_relances || null)}
-      ${champAffiche("Réponse reçue le", dateFr(cand.date_reponse))}
-      ${champAffiche("Entretien le", dateFr(cand.date_entretien))}
-      ${champAffiche("Début souhaité le", dateFr(cand.date_debut_souhaitee))}
-      ${champAffiche("Durée", cand.duree ? echapper(cand.duree) : null)}
-      ${champAffiche("Gratification", cand.gratification ? `${echapper(cand.gratification)} €/mois` : null)}
-      ${champAffiche("Mode de travail", cand.mode_travail ? echapper(cand.mode_travail) : null)}
-      ${champAffiche("Convention envoyée", cand.convention_envoyee ? echapper(cand.convention_envoyee) : null)}
-      ${champAffiche("Lien de l'offre", lienOffre, true)}
-      ${portailUrl ? champAffiche("Portail de candidature", portailUrl, true) : ""}
-      ${cand.portail_identifiant ? champAffiche("Identifiant du portail", echapper(cand.portail_identifiant)) : ""}
+      ${champAffiche(t("candidatures.col_priorite"), cand.priorite ? echapper(tv(cand.priorite)) : null)}
+      ${champAffiche(t("comparateur.sous_domaine"), cand.sous_domaine ? echapper(tv(cand.sous_domaine)) : null)}
+      ${champAffiche(t("formulaire.type_candidature"), cand.type_candidature ? echapper(tv(cand.type_candidature)) : null)}
+      ${champAffiche(t("comparateur.source"), cand.source ? echapper(tv(cand.source)) : null)}
+      ${champAffiche(t("formulaire.date_envoi"), dateFr(cand.date_envoi))}
+      ${champAffiche(t("formulaire.relance_prevue_le"), dateFr(cand.date_relance_prevue))}
+      ${champAffiche(t("formulaire.nb_relances"), cand.nb_relances || null)}
+      ${champAffiche(t("formulaire.reponse_recue_le"), dateFr(cand.date_reponse))}
+      ${champAffiche(t("comparateur.entretien_le"), dateFr(cand.date_entretien))}
+      ${champAffiche(t("comparateur.debut_souhaite"), dateFr(cand.date_debut_souhaitee))}
+      ${champAffiche(t("comparateur.duree"), cand.duree ? echapper(cand.duree) : null)}
+      ${champAffiche(t("formulaire.gratification_label"), cand.gratification ? `${echapper(cand.gratification)} €/mois` : null)}
+      ${champAffiche(t("comparateur.mode_travail"), cand.mode_travail ? echapper(tv(cand.mode_travail)) : null)}
+      ${champAffiche(t("comparateur.convention_envoyee"), cand.convention_envoyee ? echapper(tv(cand.convention_envoyee)) : null)}
+      ${champAffiche(t("formulaire.lien_offre"), lienOffre, true)}
+      ${portailUrl ? champAffiche(t("formulaire.portail_candidature"), portailUrl, true) : ""}
+      ${cand.portail_identifiant ? champAffiche(t("formulaire.portail_identifiant"), echapper(cand.portail_identifiant)) : ""}
     </div>
-    ${cand.portail_mdp ? champAfficheMotDePasse("mdp-portail-affiche", "Mot de passe du portail", cand.portail_mdp) : ""}
-    ${cand.texte_offre ? `<h3 class="section-panneau">Texte de l'offre</h3><div class="texte-long">${echapper(cand.texte_offre)}</div>` : ""}
-    ${cand.notes ? `<h3 class="section-panneau">Notes</h3><div class="texte-long">${echapper(cand.notes)}</div>` : ""}
-    ${cand.notes_entretien ? `<h3 class="section-panneau">Notes d'entretien</h3><div class="texte-long">${echapper(cand.notes_entretien)}</div>` : ""}`;
+    ${cand.portail_mdp ? champAfficheMotDePasse("mdp-portail-affiche", t("formulaire.portail_mdp"), cand.portail_mdp) : ""}
+    ${cand.texte_offre ? `<h3 class="section-panneau">${t("formulaire.texte_offre")}</h3><div class="texte-long">${echapper(cand.texte_offre)}</div>` : ""}
+    ${cand.notes ? `<h3 class="section-panneau">${t("formulaire.notes")}</h3><div class="texte-long">${echapper(cand.notes)}</div>` : ""}
+    ${cand.notes_entretien ? `<h3 class="section-panneau">${t("formulaire.notes_entretien")}</h3><div class="texte-long">${echapper(cand.notes_entretien)}</div>` : ""}`;
 }
 
 async function ouvrirDetailCandidature(numero) {
@@ -1044,11 +1091,11 @@ async function ouvrirDetailCandidature(numero) {
     const peutRelancerIA = etat.ia && etat.ia.cle_api_definie
       && ["Envoyée", "Relancée"].includes(cand.statut);
     const pied = `
-      <button class="btn btn-danger" id="btn-supprimer">Supprimer</button>
-      ${peutRelancerIA ? `<button class="btn" id="btn-brouillon-relance">Brouillon de relance</button>` : ""}
-      <button class="btn" id="btn-fiche">Fiche entretien</button>
-      <button class="btn" id="btn-mode-entretien">Mode entretien</button>
-      <button class="btn btn-accent" id="btn-modifier">Modifier</button>`;
+      <button class="btn btn-danger" id="btn-supprimer">${t("commun.supprimer")}</button>
+      ${peutRelancerIA ? `<button class="btn" id="btn-brouillon-relance">${t("formulaire.brouillon_relance")}</button>` : ""}
+      <button class="btn" id="btn-fiche">${t("formulaire.fiche_entretien")}</button>
+      <button class="btn" id="btn-mode-entretien">${t("formulaire.mode_entretien")}</button>
+      <button class="btn btn-accent" id="btn-modifier">${t("commun.modifier")}</button>`;
     ouvrirPanneau(`${cand.poste} - ${cand.entreprise}`, corps, pied);
 
     document.getElementById("btn-modifier").addEventListener("click", () => ouvrirFormCandidature(cand));
@@ -1061,37 +1108,37 @@ async function ouvrirDetailCandidature(numero) {
     if (boutonRelance) {
       boutonRelance.addEventListener("click", async () => {
         boutonRelance.disabled = true;
-        boutonRelance.textContent = "Génération…";
+        boutonRelance.textContent = t("formulaire.generation_en_cours");
         try {
           const resultat = await api(`/api/agent/relance/${numero}`, { methode: "POST", corps: {} });
           ouvrirModale(
-            "Brouillon de relance",
-            `<p class="sous-titre">À relire avant d'envoyer - rien n'est envoyé automatiquement.</p>
+            t("formulaire.brouillon_relance"),
+            `<p class="sous-titre">${t("formulaire.brouillon_relance_avertissement")}</p>
              <textarea id="texte-brouillon-relance" style="min-height:220px;" readonly>${echapper(resultat.texte)}</textarea>`,
-            `<button class="btn" onclick="fermerModale()">Fermer</button>
-             <button class="btn btn-accent" id="btn-copier-relance">Copier</button>`
+            `<button class="btn" onclick="fermerModale()">${t("commun.fermer")}</button>
+             <button class="btn btn-accent" id="btn-copier-relance">${t("formulaire.copier")}</button>`
           );
           document.getElementById("btn-copier-relance").addEventListener("click", async () => {
             await navigator.clipboard.writeText(document.getElementById("texte-brouillon-relance").value);
-            toast("Message copié");
+            toast(t("formulaire.message_copie"));
           });
         } catch (erreur) {
           toast(erreur.message, true);
         } finally {
           boutonRelance.disabled = false;
-          boutonRelance.textContent = "Brouillon de relance";
+          boutonRelance.textContent = t("formulaire.brouillon_relance");
         }
       });
     }
     document.getElementById("btn-supprimer").addEventListener("click", async () => {
       const accord = await confirmer(
-        "Supprimer cette candidature ?",
-        `« ${cand.poste} » chez ${cand.entreprise} sera définitivement supprimée de la base.`
+        t("formulaire.supprimer_candidature_titre"),
+        t("formulaire.supprimer_candidature_texte", { poste: cand.poste, entreprise: cand.entreprise })
       );
       if (!accord) return;
       try {
         await api(`/api/candidatures/${numero}`, { methode: "DELETE" });
-        toast("Candidature supprimée");
+        toast(t("formulaire.candidature_supprimee"));
         fermerPanneau();
         rendre();
       } catch (erreur) {
@@ -1118,11 +1165,11 @@ async function vueEntreprises() {
     <div class="carte carte-entreprise" onclick="ouvrirDetailEntreprise(${ent.id})">
       <div class="nom">${echapper(ent.nom)}</div>
       ${ent.site_web ? `<a class="site" href="${echapper(ent.site_web)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">${echapper(ent.site_web)}</a>` : ""}
-      <div class="contexte">${echapper(ent.contexte_actus || "Pas encore de contexte - ajoute le résultat de tes recherches (actus, missions, équipe).")}</div>
+      <div class="contexte">${echapper(ent.contexte_actus || t("entreprises.pas_de_contexte"))}</div>
       <div class="compteurs">
-        <span class="puce">${ent.nb_candidatures} candidature${ent.nb_candidatures > 1 ? "s" : ""}</span>
-        <span class="puce">${ent.nb_contacts} contact${ent.nb_contacts > 1 ? "s" : ""}</span>
-        ${ent.derniere_recherche ? `<span class="puce" title="Dernière recherche">Recherche du ${dateFr(ent.derniere_recherche)}</span>` : ""}
+        <span class="puce">${t("entreprises.nb_candidatures", { n: ent.nb_candidatures })}${ent.nb_candidatures > 1 ? "s" : ""}</span>
+        <span class="puce">${t("entreprises.nb_contacts", { n: ent.nb_contacts })}${ent.nb_contacts > 1 ? "s" : ""}</span>
+        ${ent.derniere_recherche ? `<span class="puce" title="${t("entreprises.derniere_recherche")}">${t("entreprises.recherche_du", { date: dateFr(ent.derniere_recherche) })}</span>` : ""}
       </div>
     </div>`
     )
@@ -1130,23 +1177,23 @@ async function vueEntreprises() {
 
   const banniereFusion = paires.length
     ? `<div class="banniere-fusion">
-        <span>${paires.length} doublon${paires.length > 1 ? "s" : ""} potentiel${paires.length > 1 ? "s" : ""} détecté${paires.length > 1 ? "s" : ""} (ex. « ${echapper(paires[0].a.nom)} » / « ${echapper(paires[0].b.nom)} »)</span>
-        <button class="btn" onclick="ouvrirFusionEntreprises()">Vérifier</button>
+        <span>${t(paires.length > 1 ? "entreprises.doublons_detectes_pluriel" : "entreprises.doublons_detectes_singulier", { n: paires.length })} (ex. « ${echapper(paires[0].a.nom)} » / « ${echapper(paires[0].b.nom)} »)</span>
+        <button class="btn" onclick="ouvrirFusionEntreprises()">${t("entreprises.verifier")}</button>
       </div>`
     : "";
 
   return `
     <div class="entete-vue">
-      <h1>Entreprises</h1>
-      <button class="btn btn-accent" onclick="ouvrirFormEntreprise()">+ Ajouter</button>
+      <h1>${t("nav.entreprises")}</h1>
+      <button class="btn btn-accent" onclick="ouvrirFormEntreprise()">${t("commun.ajouter")}</button>
     </div>
     ${banniereFusion}
     ${liste.length ? `<div class="grille-entreprises">${cartes}</div>` : `
       <div class="etat-vide">
         <div class="icone">${ICONES.entreprises}</div>
-        <div class="titre">Aucune entreprise pour l'instant</div>
-        <p>Les entreprises se créent automatiquement quand tu ajoutes une candidature, mais tu peux aussi en préparer une ici.</p>
-        <button class="btn btn-accent" onclick="ouvrirFormEntreprise()">Ajouter une entreprise</button>
+        <div class="titre">${t("entreprises.vide_titre")}</div>
+        <p>${t("entreprises.vide_texte")}</p>
+        <button class="btn btn-accent" onclick="ouvrirFormEntreprise()">${t("entreprises.ajouter_bouton")}</button>
       </div>`}`;
 }
 
@@ -1163,14 +1210,14 @@ async function ouvrirFusionEntreprises() {
     const b = parId[paire.b.id] || paire.b;
     const bouton = (garder, fusionner) => `
       <button type="button" class="btn btn-fusion" data-conserver="${garder.id}" data-supprimer="${fusionner.id}">
-        Garder « ${echapper(garder.nom)} »
-        <span class="cellule-secondaire">(${garder.nb_candidatures ?? 0} cand., ${garder.nb_contacts ?? 0} contact) - fusionner « ${echapper(fusionner.nom)} » dedans</span>
+        ${t("entreprises.garder", { nom: echapper(garder.nom) })}
+        <span class="cellule-secondaire">${t("entreprises.fusionner_dedans", { cand: garder.nb_candidatures ?? 0, contacts: garder.nb_contacts ?? 0, nom: echapper(fusionner.nom) })}</span>
       </button>`;
     return `
       <div class="paire-fusion">
         <div class="paire-fusion-titre">
           <strong>${echapper(a.nom)}</strong> <span class="cellule-secondaire">↔</span> <strong>${echapper(b.nom)}</strong>
-          <span class="puce">${Math.round(paire.score * 100)}% proche</span>
+          <span class="puce">${t("entreprises.pourcent_proche", { p: Math.round(paire.score * 100) })}</span>
         </div>
         <div class="paire-fusion-actions">
           ${bouton(a, b)}
@@ -1179,12 +1226,12 @@ async function ouvrirFusionEntreprises() {
       </div>`;
   };
   ouvrirModale(
-    "Entreprises peut-être en double",
+    t("entreprises.fusion_titre"),
     paires.length
       ? `<div class="liste-paires-fusion">${paires.map(ligne).join("")}</div>
-         <p class="sous-titre">La fusion déplace les candidatures et contacts, complète les champs vides de l'entreprise conservée, et supprime l'autre. Irréversible.</p>`
-      : `<p>Aucun doublon potentiel détecté.</p>`,
-    `<button class="btn btn-accent" onclick="fermerModale()">Fermer</button>`
+         <p class="sous-titre">${t("entreprises.fusion_avertissement")}</p>`
+      : `<p>${t("entreprises.aucun_doublon")}</p>`,
+    `<button class="btn btn-accent" onclick="fermerModale()">${t("commun.fermer")}</button>`
   );
   document.querySelectorAll(".btn-fusion").forEach((bouton) => {
     bouton.addEventListener("click", async () => {
@@ -1197,8 +1244,9 @@ async function ouvrirFusionEntreprises() {
         });
         fermerModale();
         toast(
-          `Fusion effectuée : ${resultat.candidatures_deplacees} candidature(s) et ` +
-          `${resultat.contacts_deplaces} contact(s) déplacé(s) vers « ${resultat.nom} ».`
+          t("entreprises.fusion_effectuee", {
+            cand: resultat.candidatures_deplacees, contacts: resultat.contacts_deplaces, nom: resultat.nom,
+          })
         );
         rendre();
       } catch (erreur) {
@@ -1217,27 +1265,27 @@ async function ouvrirFormEntreprise(numero = null) {
   }
   const corps = `
     <form id="form-entreprise" class="grille-form" onsubmit="return false;">
-      ${champTexte("nom", "Nom *", ent.nom, "text", true)}
-      ${champTexte("site_web", "Site web", ent.site_web, "url", true)}
-      ${champZone("contexte_actus", "Contexte / actus (résumé de recherche)", ent.contexte_actus)}
-      ${champTexte("derniere_recherche", "Dernière recherche le", ent.derniere_recherche, "date", true)}
+      ${champTexte("nom", t("entreprises.nom_requis"), ent.nom, "text", true)}
+      ${champTexte("site_web", t("entreprises.site_web"), ent.site_web, "url", true)}
+      ${champZone("contexte_actus", t("entreprises.contexte_label"), ent.contexte_actus)}
+      ${champTexte("derniere_recherche", t("entreprises.derniere_recherche_le"), ent.derniere_recherche, "date", true)}
     </form>`;
   const pied = creation
-    ? `<button class="btn" onclick="fermerPanneau()">Annuler</button>
-       <button class="btn btn-accent" id="btn-enregistrer">Ajouter l'entreprise</button>`
-    : `<button class="btn btn-danger" id="btn-supprimer">Supprimer</button>
-       <button class="btn btn-accent" id="btn-enregistrer">Enregistrer</button>`;
-  ouvrirPanneau(creation ? "Nouvelle entreprise" : `${ent.nom} - modifier`, corps, pied);
+    ? `<button class="btn" onclick="fermerPanneau()">${t("commun.annuler")}</button>
+       <button class="btn btn-accent" id="btn-enregistrer">${t("entreprises.ajouter_entreprise")}</button>`
+    : `<button class="btn btn-danger" id="btn-supprimer">${t("commun.supprimer")}</button>
+       <button class="btn btn-accent" id="btn-enregistrer">${t("commun.enregistrer")}</button>`;
+  ouvrirPanneau(creation ? t("entreprises.nouvelle_entreprise") : t("commun.titre_modifier", { nom: ent.nom }), corps, pied);
 
   document.getElementById("btn-enregistrer").addEventListener("click", async () => {
     const donnees = lireFormulaire(document.getElementById("form-entreprise"));
     try {
       if (creation) {
         await api("/api/entreprises", { methode: "POST", corps: donnees });
-        toast("Entreprise enregistrée");
+        toast(t("entreprises.entreprise_enregistree"));
       } else {
         await api(`/api/entreprises/${numero}`, { methode: "PATCH", corps: donnees });
-        toast("Entreprise enregistrée");
+        toast(t("entreprises.entreprise_enregistree"));
       }
       fermerPanneau();
       rendre();
@@ -1248,13 +1296,13 @@ async function ouvrirFormEntreprise(numero = null) {
   if (!creation) {
     document.getElementById("btn-supprimer").addEventListener("click", async () => {
       const accord = await confirmer(
-        "Supprimer cette entreprise ?",
-        `« ${ent.nom} » sera supprimée (refusé s'il lui reste des candidatures ou contacts).`
+        t("entreprises.supprimer_titre"),
+        t("entreprises.supprimer_texte", { nom: ent.nom })
       );
       if (!accord) return;
       try {
         await api(`/api/entreprises/${numero}`, { methode: "DELETE" });
-        toast("Entreprise supprimée");
+        toast(t("entreprises.entreprise_supprimee"));
         fermerPanneau();
         rendre();
       } catch (erreur) {
@@ -1272,7 +1320,7 @@ async function ouvrirDetailEntreprise(numero) {
       api("/api/candidatures"),
     ]);
     const ent = listeEntreprises.find((e) => e.id === numero);
-    if (!ent) { toast("Entreprise introuvable.", true); return; }
+    if (!ent) { toast(t("entreprises.introuvable"), true); return; }
     const contactsEnt = listeContacts.filter((c) => c.entreprise === ent.nom);
     const candidaturesEnt = listeCandidatures.filter((c) => c.entreprise === ent.nom);
 
@@ -1282,13 +1330,13 @@ async function ouvrirDetailEntreprise(numero) {
       <div class="ligne-liee" onclick="ouvrirDetailContact(${c.id})">
         <span class="cellule-principale">${echapper(c.nom)}${c.poste ? ` <span class="cellule-secondaire">${echapper(c.poste)}</span>` : ""}</span>
         ${coordonnee ? `<span class="cellule-secondaire">${echapper(coordonnee)}</span>` : ""}
-        ${c.statut_contact ? `<span class="puce">${echapper(c.statut_contact)}</span>` : ""}
+        ${c.statut_contact ? `<span class="puce">${echapper(tv(c.statut_contact))}</span>` : ""}
       </div>`;
     };
     const ligneCandidature = (c) => `
       <div class="ligne-liee" onclick="ouvrirDetailCandidature(${c.id})">
         <span class="cellule-principale">${echapper(c.poste)}</span>
-        <span class="puce puce-statut" style="--couleur-statut:${COULEURS_STATUT[c.statut]}"><span class="point"></span>${echapper(c.statut)}</span>
+        <span class="puce puce-statut" style="--couleur-statut:${COULEURS_STATUT[c.statut]}"><span class="point"></span>${echapper(tv(c.statut))}</span>
       </div>`;
 
     const corps = `
@@ -1298,33 +1346,33 @@ async function ouvrirDetailEntreprise(numero) {
           ${ent.site_web ? `<p class="fiche-soustitre"><a class="lien-detail" href="${echapper(ent.site_web)}" target="_blank" rel="noopener">${echapper(ent.site_web)}</a></p>` : ""}
         </div>
       </div>
-      <h3 class="section-panneau">Contexte / actus</h3>
+      <h3 class="section-panneau">${t("entreprises.contexte_actus")}</h3>
       ${ent.contexte_actus
         ? `<div class="texte-long">${echapper(ent.contexte_actus)}</div>`
-        : `<div class="valeur-affichee vide">Pas encore de contexte - ajoute le résultat de tes recherches.</div>`}
-      ${ent.derniere_recherche ? `<p class="cellule-secondaire" style="margin-top:8px;">Dernière recherche le ${dateFr(ent.derniere_recherche)}</p>` : ""}
+        : `<div class="valeur-affichee vide">${t("entreprises.pas_de_contexte_fiche")}</div>`}
+      ${ent.derniere_recherche ? `<p class="cellule-secondaire" style="margin-top:8px;">${t("entreprises.derniere_recherche_texte", { date: dateFr(ent.derniere_recherche) })}</p>` : ""}
 
-      <h3 class="section-panneau">Contacts (${contactsEnt.length})</h3>
-      ${contactsEnt.length ? `<div class="liste-liee">${contactsEnt.map(ligneContact).join("")}</div>` : `<p class="sous-titre">Aucun contact pour l'instant.</p>`}
+      <h3 class="section-panneau">${t("entreprises.contacts_titre", { n: contactsEnt.length })}</h3>
+      ${contactsEnt.length ? `<div class="liste-liee">${contactsEnt.map(ligneContact).join("")}</div>` : `<p class="sous-titre">${t("entreprises.aucun_contact")}</p>`}
 
-      <h3 class="section-panneau">Candidatures (${candidaturesEnt.length})</h3>
-      ${candidaturesEnt.length ? `<div class="liste-liee">${candidaturesEnt.map(ligneCandidature).join("")}</div>` : `<p class="sous-titre">Aucune candidature pour l'instant.</p>`}`;
+      <h3 class="section-panneau">${t("entreprises.candidatures_titre", { n: candidaturesEnt.length })}</h3>
+      ${candidaturesEnt.length ? `<div class="liste-liee">${candidaturesEnt.map(ligneCandidature).join("")}</div>` : `<p class="sous-titre">${t("entreprises.aucune_candidature")}</p>`}`;
 
     const pied = `
-      <button class="btn btn-danger" id="btn-supprimer">Supprimer</button>
-      <button class="btn btn-accent" id="btn-modifier">Modifier</button>`;
+      <button class="btn btn-danger" id="btn-supprimer">${t("commun.supprimer")}</button>
+      <button class="btn btn-accent" id="btn-modifier">${t("commun.modifier")}</button>`;
     ouvrirPanneau(ent.nom, corps, pied);
 
     document.getElementById("btn-modifier").addEventListener("click", () => ouvrirFormEntreprise(numero));
     document.getElementById("btn-supprimer").addEventListener("click", async () => {
       const accord = await confirmer(
-        "Supprimer cette entreprise ?",
-        `« ${ent.nom} » sera supprimée (refusé s'il lui reste des candidatures ou contacts).`
+        t("entreprises.supprimer_titre"),
+        t("entreprises.supprimer_texte", { nom: ent.nom })
       );
       if (!accord) return;
       try {
         await api(`/api/entreprises/${numero}`, { methode: "DELETE" });
-        toast("Entreprise supprimée");
+        toast(t("entreprises.entreprise_supprimee"));
         fermerPanneau();
         rendre();
       } catch (erreur) {
@@ -1352,7 +1400,7 @@ async function vueContacts() {
       <td class="cellule-secondaire">${echapper(contact.email || "")}</td>
       <td class="cellule-secondaire">${echapper(contact.telephone || "")}</td>
       <td class="cellule-secondaire">${echapper(contact.linkedin || "")}</td>
-      <td><span class="puce">${echapper(contact.statut_contact || "")}</span></td>
+      <td><span class="puce">${echapper(tv(contact.statut_contact || ""))}</span></td>
       <td class="cellule-date">${dateFr(contact.date_contact)}</td>
     </tr>`
     )
@@ -1360,19 +1408,19 @@ async function vueContacts() {
 
   return `
     <div class="entete-vue">
-      <h1>Contacts</h1>
-      <button class="btn btn-accent" onclick="ouvrirFormContact()">+ Ajouter</button>
+      <h1>${t("nav.contacts")}</h1>
+      <button class="btn btn-accent" onclick="ouvrirFormContact()">${t("commun.ajouter")}</button>
     </div>
     ${liste.length ? `
       <div class="enveloppe-tableau"><table class="tableau">
-        <thead><tr><th>Nom</th><th>Entreprise</th><th>Poste</th><th>Email</th><th>Téléphone</th><th>LinkedIn</th><th>Statut</th><th>Contacté le</th></tr></thead>
+        <thead><tr><th>${t("contacts.col_nom")}</th><th>${t("candidatures.col_entreprise")}</th><th>${t("candidatures.col_poste")}</th><th>${t("contacts.email")}</th><th>${t("contacts.telephone")}</th><th>${t("contacts.linkedin")}</th><th>${t("candidatures.col_statut")}</th><th>${t("contacts.contacte_le")}</th></tr></thead>
         <tbody>${lignes}</tbody>
       </table></div>` : `
       <div class="etat-vide">
         <div class="icone">${ICONES.contacts}</div>
-        <div class="titre">Aucun contact pour l'instant</div>
-        <p>Ajoute les personnes repérées dans les équipes visées : recruteurs, leads, alumni…</p>
-        <button class="btn btn-accent" onclick="ouvrirFormContact()">Ajouter un contact</button>
+        <div class="titre">${t("contacts.vide_titre")}</div>
+        <p>${t("contacts.vide_texte")}</p>
+        <button class="btn btn-accent" onclick="ouvrirFormContact()">${t("contacts.ajouter_bouton")}</button>
       </div>`}`;
 }
 
@@ -1385,7 +1433,7 @@ async function ouvrirDetailContact(numero) {
       api("/api/entreprises"),
     ]);
     const contact = liste.find((c) => c.id === numero);
-    if (!contact) { toast("Contact introuvable.", true); return; }
+    if (!contact) { toast(t("contacts.introuvable"), true); return; }
     const entreprise = listeEntreprises.find((e) => e.nom === contact.entreprise);
 
     const ligneEntreprise = entreprise
@@ -1395,9 +1443,9 @@ async function ouvrirDetailContact(numero) {
     // Un champ n'est affiché que s'il n'est pas vide (aucun email/téléphone/
     // LinkedIn) : pas de ligne vide pour une coordonnée non renseignée.
     const champsCoordonnees = [
-      contact.email ? champAffiche("Email", `<a class="lien-detail" href="mailto:${echapper(contact.email)}">${echapper(contact.email)}</a>`) : "",
-      contact.telephone ? champAffiche("Téléphone", `<a class="lien-detail" href="tel:${echapper(contact.telephone)}">${echapper(contact.telephone)}</a>`) : "",
-      contact.linkedin ? champAffiche("LinkedIn", /^https?:\/\//i.test(contact.linkedin)
+      contact.email ? champAffiche(t("contacts.email"), `<a class="lien-detail" href="mailto:${echapper(contact.email)}">${echapper(contact.email)}</a>`) : "",
+      contact.telephone ? champAffiche(t("contacts.telephone"), `<a class="lien-detail" href="tel:${echapper(contact.telephone)}">${echapper(contact.telephone)}</a>`) : "",
+      contact.linkedin ? champAffiche(t("contacts.linkedin"), /^https?:\/\//i.test(contact.linkedin)
         ? `<a class="lien-detail" href="${echapper(contact.linkedin)}" target="_blank" rel="noopener">${echapper(contact.linkedin)}</a>`
         : echapper(contact.linkedin)) : "",
     ].join("");
@@ -1408,31 +1456,31 @@ async function ouvrirDetailContact(numero) {
           <h2>${echapper(contact.nom)}</h2>
           <p class="fiche-soustitre">${ligneEntreprise}${contact.poste ? " · " + echapper(contact.poste) : ""}</p>
         </div>
-        ${contact.statut_contact ? `<span class="puce">${echapper(contact.statut_contact)}</span>` : ""}
+        ${contact.statut_contact ? `<span class="puce">${echapper(tv(contact.statut_contact))}</span>` : ""}
       </div>
       <div class="grille-form">
-        ${champAffiche("Équipe", contact.equipe ? echapper(contact.equipe) : null)}
-        ${champAffiche("Contacté le", dateFr(contact.date_contact))}
+        ${champAffiche(t("contacts.equipe"), contact.equipe ? echapper(contact.equipe) : null)}
+        ${champAffiche(t("contacts.contacte_le"), dateFr(contact.date_contact))}
         ${champsCoordonnees}
-        ${champAffiche("Trouvé via", contact.source ? echapper(contact.source) : null)}
+        ${champAffiche(t("contacts.trouve_via"), contact.source ? echapper(tv(contact.source)) : null)}
       </div>
-      ${contact.notes ? `<h3 class="section-panneau">Notes</h3><div class="texte-long">${echapper(contact.notes)}</div>` : ""}`;
+      ${contact.notes ? `<h3 class="section-panneau">${t("formulaire.notes")}</h3><div class="texte-long">${echapper(contact.notes)}</div>` : ""}`;
 
     const pied = `
-      <button class="btn btn-danger" id="btn-supprimer">Supprimer</button>
-      <button class="btn btn-accent" id="btn-modifier">Modifier</button>`;
+      <button class="btn btn-danger" id="btn-supprimer">${t("commun.supprimer")}</button>
+      <button class="btn btn-accent" id="btn-modifier">${t("commun.modifier")}</button>`;
     ouvrirPanneau(contact.nom, corps, pied);
 
     document.getElementById("btn-modifier").addEventListener("click", () => ouvrirFormContact(numero));
     document.getElementById("btn-supprimer").addEventListener("click", async () => {
       const accord = await confirmer(
-        "Supprimer ce contact ?",
-        `${contact.nom} (${contact.entreprise}) sera supprimé de la base.`
+        t("contacts.supprimer_titre"),
+        t("contacts.supprimer_texte", { nom: contact.nom, entreprise: contact.entreprise })
       );
       if (!accord) return;
       try {
         await api(`/api/contacts/${numero}`, { methode: "DELETE" });
-        toast("Contact supprimé");
+        toast(t("contacts.contact_supprime"));
         fermerPanneau();
         rendre();
       } catch (erreur) {
@@ -1455,45 +1503,45 @@ async function ouvrirFormContact(numero = null) {
   }
   const champEntreprise = creation
     ? `<div class="champ">
-        <label for="champ-entreprise">Entreprise *</label>
+        <label for="champ-entreprise">${t("formulaire.entreprise_requis")}</label>
         <input type="text" id="champ-entreprise" name="entreprise" list="liste-entreprises" required>
         <datalist id="liste-entreprises">
           ${listeEntreprises.map((ent) => `<option value="${echapper(ent.nom)}">`).join("")}
         </datalist>
       </div>`
-    : `<div class="champ"><label>Entreprise</label>
+    : `<div class="champ"><label>${t("formulaire.entreprise")}</label>
         <input type="text" value="${echapper(contact.entreprise)}" disabled></div>`;
 
   const corps = `
     <form id="form-contact" class="grille-form" onsubmit="return false;">
       ${champEntreprise}
-      ${champTexte("nom", "Nom *", contact.nom)}
-      ${champTexte("poste", "Poste", contact.poste)}
-      ${champTexte("equipe", "Équipe", contact.equipe)}
-      ${champTexte("email", "Email", contact.email, "email")}
-      ${champTexte("telephone", "Téléphone", contact.telephone, "tel")}
-      ${champTexte("linkedin", "LinkedIn", contact.linkedin, "url")}
-      ${champSelect("statut_contact", "Statut", v.statuts_contact, contact.statut_contact || "À contacter", false)}
-      ${champTexte("date_contact", "Contacté le", contact.date_contact, "date")}
-      ${champSelect("source", "Trouvé via", v.sources_contact, contact.source)}
-      ${champZone("notes", "Notes", contact.notes)}
+      ${champTexte("nom", t("contacts.nom_requis"), contact.nom)}
+      ${champTexte("poste", t("candidatures.col_poste"), contact.poste)}
+      ${champTexte("equipe", t("contacts.equipe"), contact.equipe)}
+      ${champTexte("email", t("contacts.email"), contact.email, "email")}
+      ${champTexte("telephone", t("contacts.telephone"), contact.telephone, "tel")}
+      ${champTexte("linkedin", t("contacts.linkedin"), contact.linkedin, "url")}
+      ${champSelect("statut_contact", t("candidatures.col_statut"), v.statuts_contact, contact.statut_contact || "À contacter", false)}
+      ${champTexte("date_contact", t("contacts.contacte_le"), contact.date_contact, "date")}
+      ${champSelect("source", t("contacts.trouve_via"), v.sources_contact, contact.source)}
+      ${champZone("notes", t("formulaire.notes"), contact.notes)}
     </form>`;
   const pied = creation
-    ? `<button class="btn" onclick="fermerPanneau()">Annuler</button>
-       <button class="btn btn-accent" id="btn-enregistrer">Ajouter le contact</button>`
-    : `<button class="btn btn-danger" id="btn-supprimer">Supprimer</button>
-       <button class="btn btn-accent" id="btn-enregistrer">Enregistrer</button>`;
-  ouvrirPanneau(creation ? "Nouveau contact" : `${contact.nom} - modifier`, corps, pied);
+    ? `<button class="btn" onclick="fermerPanneau()">${t("commun.annuler")}</button>
+       <button class="btn btn-accent" id="btn-enregistrer">${t("contacts.ajouter_contact")}</button>`
+    : `<button class="btn btn-danger" id="btn-supprimer">${t("commun.supprimer")}</button>
+       <button class="btn btn-accent" id="btn-enregistrer">${t("commun.enregistrer")}</button>`;
+  ouvrirPanneau(creation ? t("contacts.nouveau_contact") : t("commun.titre_modifier", { nom: contact.nom }), corps, pied);
 
   document.getElementById("btn-enregistrer").addEventListener("click", async () => {
     const donnees = lireFormulaire(document.getElementById("form-contact"));
     try {
       if (creation) {
         await api("/api/contacts", { methode: "POST", corps: donnees });
-        toast("Contact ajouté");
+        toast(t("contacts.contact_ajoute"));
       } else {
         await api(`/api/contacts/${numero}`, { methode: "PATCH", corps: donnees });
-        toast("Contact enregistré");
+        toast(t("contacts.contact_enregistre"));
       }
       fermerPanneau();
       rendre();
@@ -1504,13 +1552,13 @@ async function ouvrirFormContact(numero = null) {
   if (!creation) {
     document.getElementById("btn-supprimer").addEventListener("click", async () => {
       const accord = await confirmer(
-        "Supprimer ce contact ?",
-        `${contact.nom} (${contact.entreprise}) sera supprimé de la base.`
+        t("contacts.supprimer_titre"),
+        t("contacts.supprimer_texte", { nom: contact.nom, entreprise: contact.entreprise })
       );
       if (!accord) return;
       try {
         await api(`/api/contacts/${numero}`, { methode: "DELETE" });
-        toast("Contact supprimé");
+        toast(t("contacts.contact_supprime"));
         fermerPanneau();
         rendre();
       } catch (erreur) {
@@ -1538,7 +1586,7 @@ function lienGoogleAgenda(echeance) {
   const format = (d) => dateISOLocale(d).replace(/-/g, "");
   const parametres = new URLSearchParams({
     action: "TEMPLATE",
-    text: `${echeance.libelle} - ${echeance.entreprise}`,
+    text: `${tv(echeance.libelle)} - ${echeance.entreprise}`,
     dates: `${format(debut)}/${format(fin)}`,
     details: echeance.poste,
   });
@@ -1551,13 +1599,13 @@ function chipEcheance(echeance) {
     <span class="chip-echeance-groupe" style="--couleur-statut:${COULEURS_ECHEANCE[echeance.type]}">
       <button class="chip-echeance"
               onclick="ouvrirDetailCandidature(${echeance.candidature_id})"
-              title="${echapper(echeance.libelle)} - ${echapper(echeance.entreprise)} (${echapper(echeance.poste)})">
-        <span class="point"></span>${echapper(echeance.libelle)} · ${echapper(echeance.entreprise)}
+              title="${echapper(tv(echeance.libelle))} - ${echapper(echeance.entreprise)} (${echapper(echeance.poste)})">
+        <span class="point"></span>${echapper(tv(echeance.libelle))} · ${echapper(echeance.entreprise)}
       </button>
       <a class="chip-echeance-ajout" href="${lienGoogleAgenda(echeance)}" target="_blank" rel="noopener"
-         title="Ajouter à Google Agenda" onclick="event.stopPropagation()">+</a>
+         title="${t("agenda.ajouter_google")}" onclick="event.stopPropagation()">+</a>
       <button type="button" class="chip-echeance-ajout" data-echeance="${donneesEcheance}"
-              title="Envoyer vers l'app Rappels (macOS)"
+              title="${t("agenda.envoyer_rappels")}"
               onclick="event.stopPropagation(); pousserRappelDepuisBouton(this)">R</button>
     </span>`;
 }
@@ -1568,7 +1616,7 @@ async function pousserRappelDepuisBouton(bouton) {
   bouton.textContent = "…";
   try {
     await api("/api/rappels/echeance", { methode: "POST", corps: echeance });
-    toast("Rappel créé dans l'app Rappels");
+    toast(t("agenda.rappel_cree"));
     bouton.textContent = "✓";
     setTimeout(() => { bouton.textContent = texteInitial; }, 1500);
   } catch (erreur) {
@@ -1586,20 +1634,21 @@ async function vueAgenda() {
   const parJour = {};
   echeances.forEach((e) => (parJour[e.date] = parJour[e.date] || []).push(e));
 
+  const localeAgenda = etat.langue === "en" ? "en-US" : "fr-FR";
   const entete = `
     <div class="entete-vue">
-      <h1>Agenda</h1>
+      <h1>${t("nav.agenda")}</h1>
       <div class="bascule">
-        <button data-agenda="mois" class="${etat.agendaMode === "mois" ? "actif" : ""}">Mois</button>
-        <button data-agenda="semaine" class="${etat.agendaMode === "semaine" ? "actif" : ""}">2 semaines</button>
+        <button data-agenda="mois" class="${etat.agendaMode === "mois" ? "actif" : ""}">${t("agenda.mois")}</button>
+        <button data-agenda="semaine" class="${etat.agendaMode === "semaine" ? "actif" : ""}">${t("agenda.deux_semaines")}</button>
       </div>
-      <a class="btn" href="/api/agenda/ics" title="À importer dans Calendrier, Google Agenda ou Outlook">Exporter (.ics)</a>
-      <button class="btn btn-accent" onclick="ouvrirConnexionCalendrier()">Connecter un calendrier</button>
+      <a class="btn" href="/api/agenda/ics" title="${t("agenda.exporter_titre")}">${t("agenda.exporter")}</a>
+      <button class="btn btn-accent" onclick="ouvrirConnexionCalendrier()">${t("agenda.connecter_calendrier")}</button>
     </div>
     <div class="legende-agenda">
-      <span class="puce puce-statut" style="--couleur-statut:${COULEURS_ECHEANCE.relance}"><span class="point"></span>Relance prévue</span>
-      <span class="puce puce-statut" style="--couleur-statut:${COULEURS_ECHEANCE.entretien}"><span class="point"></span>Entretien</span>
-      <span class="puce puce-statut" style="--couleur-statut:${COULEURS_ECHEANCE.debut}"><span class="point"></span>Début souhaité</span>
+      <span class="puce puce-statut" style="--couleur-statut:${COULEURS_ECHEANCE.relance}"><span class="point"></span>${t("agenda.legende_relance")}</span>
+      <span class="puce puce-statut" style="--couleur-statut:${COULEURS_ECHEANCE.entretien}"><span class="point"></span>${tv("Entretien")}</span>
+      <span class="puce puce-statut" style="--couleur-statut:${COULEURS_ECHEANCE.debut}"><span class="point"></span>${t("agenda.legende_debut")}</span>
     </div>`;
 
   if (etat.agendaMode === "semaine") {
@@ -1609,10 +1658,10 @@ async function vueAgenda() {
       const iso = dateISOLocale(curseur);
       const jour = parJour[iso] || [];
       if (jour.length) {
-        const libelle = curseur.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" });
+        const libelle = curseur.toLocaleDateString(localeAgenda, { weekday: "long", day: "numeric", month: "long" });
         blocs.push(`
           <div class="jour-semaine">
-            <div class="jour-semaine-titre">${echapper(libelle)}${i === 0 ? " - aujourd'hui" : ""}</div>
+            <div class="jour-semaine-titre">${echapper(libelle)}${i === 0 ? " - " + t("agenda.aujourdhui_minuscule") : ""}</div>
             ${jour.map(chipEcheance).join("")}
           </div>`);
       }
@@ -1620,12 +1669,12 @@ async function vueAgenda() {
     }
     return entete + (blocs.length
       ? `<div class="carte">${blocs.join("")}</div>`
-      : `<div class="etat-vide"><div class="titre">Rien dans les 14 prochains jours</div><p>Les relances prévues, entretiens et débuts souhaités apparaîtront ici.</p></div>`);
+      : `<div class="etat-vide"><div class="titre">${t("agenda.vide_titre")}</div><p>${t("agenda.vide_texte")}</p></div>`);
   }
 
   // Vue mois
   const base = etat.agendaBase;
-  const nomMois = base.toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
+  const nomMois = base.toLocaleDateString(localeAgenda, { month: "long", year: "numeric" });
   const decalage = (new Date(base.getFullYear(), base.getMonth(), 1).getDay() + 6) % 7; // lundi = 0
   const joursDansMois = new Date(base.getFullYear(), base.getMonth() + 1, 0).getDate();
   const aujourdHui = dateISOLocale(new Date());
@@ -1647,9 +1696,9 @@ async function vueAgenda() {
       <button class="btn" id="agenda-precedent">‹</button>
       <div class="agenda-mois">${echapper(nomMois)}</div>
       <button class="btn" id="agenda-suivant">›</button>
-      <button class="btn btn-discret" id="agenda-aujourdhui">Aujourd'hui</button>
+      <button class="btn btn-discret" id="agenda-aujourdhui">${t("agenda.aujourdhui")}</button>
     </div>
-    <div class="grille-agenda-entete">${["lun.", "mar.", "mer.", "jeu.", "ven.", "sam.", "dim."].map((j) => `<div>${j}</div>`).join("")}</div>
+    <div class="grille-agenda-entete">${t("agenda.jours_semaine").split(",").map((j) => `<div>${j}</div>`).join("")}</div>
     <div class="grille-agenda">${cellules.join("")}</div>`;
 }
 
@@ -1679,55 +1728,48 @@ function activerAgenda() {
 function ouvrirConnexionCalendrier() {
   const lienAbonnement = location.origin.replace(/^http/, "webcal") + "/api/agenda/abonnement.ics";
   ouvrirModale(
-    "Connecter un calendrier",
+    t("agenda.connecter_calendrier"),
     `
     <div class="bloc-calendrier">
-      <h3>Calendrier (Mac) et applications compatibles webcal</h3>
-      <p class="sous-titre">S'abonner comme calendrier « en direct » : les échéances se mettent à jour
-        automatiquement à chaque ouverture du calendrier, tant qu'Azimut est lancé.</p>
-      <a class="btn btn-accent" href="${lienAbonnement}">S'abonner dans Calendrier</a>
+      <h3>${t("agenda.calendrier_mac_titre")}</h3>
+      <p class="sous-titre">${t("agenda.calendrier_mac_texte")}</p>
+      <a class="btn btn-accent" href="${lienAbonnement}">${t("agenda.sabonner")}</a>
     </div>
     <div class="bloc-calendrier">
-      <h3>Google Agenda</h3>
-      <p class="sous-titre">Google n'accepte pas les abonnements à une adresse locale (celle de ta
-        machine) : deux façons de faire à la place.</p>
+      <h3>${t("agenda.google_titre")}</h3>
+      <p class="sous-titre">${t("agenda.google_texte")}</p>
       <ul>
-        <li>Ajouter une échéance précise : le bouton <strong>+</strong> à côté de chaque échéance
-          dans l'agenda ouvre Google Agenda pré-rempli.</li>
-        <li>Tout importer d'un coup : télécharger le fichier ci-dessous, puis dans Google Agenda →
-          Paramètres → Importer et exporter → Importer.</li>
+        <li>${t("agenda.google_option1")}</li>
+        <li>${t("agenda.google_option2")}</li>
       </ul>
-      <a class="btn" href="/api/agenda/ics">Télécharger le fichier .ics</a>
+      <a class="btn" href="/api/agenda/ics">${t("agenda.telecharger_ics")}</a>
     </div>
     <div class="bloc-calendrier">
-      <h3>Outlook et autres</h3>
-      <p class="sous-titre">Le même fichier .ics s'importe dans la plupart des applications de
-        calendrier (Outlook, Thunderbird…) ; certaines acceptent aussi l'abonnement par URL ci-dessus.</p>
+      <h3>${t("agenda.outlook_titre")}</h3>
+      <p class="sous-titre">${t("agenda.outlook_texte")}</p>
     </div>
     <div class="bloc-calendrier">
-      <h3>App Rappels (macOS)</h3>
-      <p class="sous-titre">En plus du calendrier, chaque échéance peut aussi devenir un rappel daté
-        (bouton <strong>R</strong> à côté de chaque échéance), ou toutes d'un coup ci-dessous. La toute
-        première fois, macOS demande d'autoriser Azimut à automatiser Rappels - à accorder une fois.</p>
-      <button class="btn" id="btn-tout-pousser-rappels">Envoyer toutes les échéances vers Rappels</button>
+      <h3>${t("agenda.rappels_titre")}</h3>
+      <p class="sous-titre">${t("agenda.rappels_texte")}</p>
+      <button class="btn" id="btn-tout-pousser-rappels">${t("agenda.envoyer_toutes_echeances")}</button>
       <p class="sous-titre" id="resultat-rappels" style="margin-top:8px;"></p>
     </div>`,
-    `<button class="btn btn-accent" onclick="fermerModale()">Fermer</button>`
+    `<button class="btn btn-accent" onclick="fermerModale()">${t("commun.fermer")}</button>`
   );
   document.getElementById("btn-tout-pousser-rappels").addEventListener("click", async (evenement) => {
     const bouton = evenement.currentTarget;
     bouton.disabled = true;
-    bouton.textContent = "Envoi en cours…";
+    bouton.textContent = t("agenda.envoi_en_cours");
     try {
       const resultat = await api("/api/rappels/tout_pousser", { methode: "POST" });
       document.getElementById("resultat-rappels").textContent =
-        `${resultat.reussies} rappel(s) créé(s)` + (resultat.echouees ? `, ${resultat.echouees} échec(s).` : ".");
-      toast(`${resultat.reussies} rappel(s) envoyé(s) vers Rappels`);
+        t("agenda.rappels_crees", { n: resultat.reussies }) + (resultat.echouees ? ", " + t("agenda.rappels_echecs", { n: resultat.echouees }) : ".");
+      toast(t("agenda.rappels_envoyes", { n: resultat.reussies }));
     } catch (erreur) {
       toast(erreur.message, true);
     } finally {
       bouton.disabled = false;
-      bouton.textContent = "Envoyer toutes les échéances vers Rappels";
+      bouton.textContent = t("agenda.envoyer_toutes_echeances");
     }
   });
 }
@@ -1743,60 +1785,60 @@ async function vueDocuments() {
       (doc) => `
     <tr>
       <td class="cellule-principale">${echapper(doc.nom_fichier)}</td>
-      <td><span class="puce">${echapper(doc.type_document || "Autre")}</span></td>
+      <td><span class="puce">${echapper(tv(doc.type_document || "Autre"))}</span></td>
       <td>${echapper(doc.entreprise)} <span class="cellule-secondaire">${echapper(doc.poste)}</span></td>
       <td class="cellule-date">${dateFr(doc.date_ajout)}</td>
       <td>
-        <a class="btn btn-discret" href="/api/documents/${doc.id}/telecharger">Télécharger</a>
-        <button class="btn btn-danger" onclick="supprimerDocument(${doc.id}, null)">Supprimer</button>
+        <a class="btn btn-discret" href="/api/documents/${doc.id}/telecharger">${t("documents.telecharger")}</a>
+        <button class="btn btn-danger" onclick="supprimerDocument(${doc.id}, null)">${t("commun.supprimer")}</button>
       </td>
     </tr>`
     )
     .join("");
   return `
     <div class="entete-vue">
-      <h1>Documents</h1>
-      <button class="btn btn-accent" onclick="ouvrirFormDocument()">+ Ajouter</button>
+      <h1>${t("nav.documents")}</h1>
+      <button class="btn btn-accent" onclick="ouvrirFormDocument()">${t("commun.ajouter")}</button>
     </div>
     ${liste.length ? `
       <div class="enveloppe-tableau"><table class="tableau">
-        <thead><tr><th>Fichier</th><th>Type</th><th>Candidature</th><th>Ajouté le</th><th></th></tr></thead>
+        <thead><tr><th>${t("documents.col_fichier")}</th><th>${t("documents.col_type")}</th><th>${t("nav.candidatures")}</th><th>${t("documents.col_ajoute_le")}</th><th></th></tr></thead>
         <tbody>${lignes}</tbody>
       </table></div>` : `
       <div class="etat-vide">
         <div class="icone">${ICONES.candidatures}</div>
-        <div class="titre">Aucun document pour l'instant</div>
-        <p>Associe à chaque candidature le CV et la lettre envoyés, pour retrouver « ce que j'ai envoyé chez X ».</p>
-        <button class="btn btn-accent" onclick="ouvrirFormDocument()">Ajouter un document</button>
+        <div class="titre">${t("documents.vide_titre")}</div>
+        <p>${t("documents.vide_texte")}</p>
+        <button class="btn btn-accent" onclick="ouvrirFormDocument()">${t("documents.ajouter_bouton")}</button>
       </div>`}`;
 }
 
 async function ouvrirFormDocument() {
   const candidaturesListe = await api("/api/candidatures");
   if (!candidaturesListe.length) {
-    toast("Ajoute d'abord une candidature.", true);
+    toast(t("documents.ajoute_candidature_dabord"), true);
     return;
   }
   ouvrirModale(
-    "Ajouter un document",
+    t("documents.ajouter_titre"),
     `<div class="grille-form">
       <div class="champ pleine-largeur">
-        <label for="doc-candidature">Candidature</label>
+        <label for="doc-candidature">${t("nav.candidatures")}</label>
         <select id="doc-candidature">
           ${candidaturesListe.map((c) => `<option value="${c.id}">${echapper(c.entreprise)} - ${echapper(c.poste)}</option>`).join("")}
         </select>
       </div>
       <div class="champ">
-        <label for="doc-type">Type</label>
+        <label for="doc-type">${t("documents.col_type")}</label>
         <select id="doc-type">${optionsSelect(etat.valeurs.types_document, null, false)}</select>
       </div>
       <div class="champ">
-        <label for="doc-fichier">Fichier(s) - PDF ou autre</label>
+        <label for="doc-fichier">${t("documents.fichiers_label")}</label>
         <input type="file" id="doc-fichier" multiple>
       </div>
     </div>`,
-    `<button class="btn" onclick="fermerModale()">Annuler</button>
-     <button class="btn btn-accent" id="btn-doc-ajouter">Ajouter</button>`,
+    `<button class="btn" onclick="fermerModale()">${t("commun.annuler")}</button>
+     <button class="btn btn-accent" id="btn-doc-ajouter">${t("commun.ajouter_simple")}</button>`,
     true
   );
   document.getElementById("btn-doc-ajouter").addEventListener("click", async () => {
@@ -1817,7 +1859,7 @@ async function televerserDocument(candidatureId, fichiers, type, apres) {
     ? Array.from(fichiers)
     : fichiers ? [fichiers] : [];
   if (!liste.length) {
-    toast("Choisir d'abord un fichier.", true);
+    toast(t("documents.choisir_fichier_dabord"), true);
     return;
   }
   let reussis = 0;
@@ -1831,14 +1873,14 @@ async function televerserDocument(candidatureId, fichiers, type, apres) {
         method: "POST", body: formulaire,
       });
       const donnees = await reponse.json();
-      if (!reponse.ok) throw new Error(donnees.erreur || "Envoi du fichier impossible.");
+      if (!reponse.ok) throw new Error(donnees.erreur || t("documents.envoi_impossible"));
       reussis += 1;
     } catch (erreur) {
       erreurs.push(`${fichier.name} : ${erreur.message}`);
     }
   }
   if (reussis) {
-    toast(reussis === 1 ? "Document ajouté" : `${reussis} documents ajoutés`);
+    toast(reussis === 1 ? t("documents.document_ajoute") : t("documents.documents_ajoutes", { n: reussis }));
   }
   erreurs.forEach((message) => toast(message, true));
   if (reussis && apres) apres();
@@ -1846,13 +1888,13 @@ async function televerserDocument(candidatureId, fichiers, type, apres) {
 
 async function supprimerDocument(idDocument, idCandidature) {
   const accord = await confirmer(
-    "Supprimer ce document ?",
-    "Le fichier sera définitivement supprimé du dossier documents/."
+    t("documents.supprimer_titre"),
+    t("documents.supprimer_texte")
   );
   if (!accord) return;
   try {
     await api(`/api/documents/${idDocument}`, { methode: "DELETE" });
-    toast("Document supprimé");
+    toast(t("documents.document_supprime"));
     if (idCandidature) ouvrirDetailCandidature(idCandidature);
     else rendre();
   } catch (erreur) {
@@ -1883,13 +1925,13 @@ function graphiqueHebdomadaire(serie) {
   const cercles = points
     .map((p) => `
       <circle class="point-graphique" cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="3">
-        <title>Semaine du ${dateFr(p.debut)} au ${dateFr(p.fin)} : ${p.nombre} candidature${p.nombre > 1 ? "s" : ""} envoyée${p.nombre > 1 ? "s" : ""}</title>
+        <title>${t("statistiques.semaine_info", { debut: dateFr(p.debut), fin: dateFr(p.fin), n: p.nombre })}</title>
       </circle>`)
     .join("");
   const premiere = points[0];
   const derniere = points[points.length - 1];
   return `
-    <svg viewBox="0 0 ${largeur} ${hauteur}" class="graphique-ligne" preserveAspectRatio="none" role="img" aria-label="Candidatures envoyées par semaine, 12 dernières semaines">
+    <svg viewBox="0 0 ${largeur} ${hauteur}" class="graphique-ligne" preserveAspectRatio="none" role="img" aria-label="${t("statistiques.graphique_titre")}">
       <line x1="${marge.cote}" y1="${base}" x2="${largeur - marge.cote}" y2="${base}" class="axe-graphique"/>
       <path d="${aire}" class="aire-graphique"/>
       <path d="${chemin}" class="trait-graphique"/>
@@ -1905,11 +1947,11 @@ async function vueStats() {
   const obj = stats.objectif_hebdomadaire;
   if (!stats.total) {
     return `
-      <div class="entete-vue"><h1>Statistiques</h1></div>
+      <div class="entete-vue"><h1>${t("nav.statistiques")}</h1></div>
       <div class="etat-vide">
         <div class="icone">${ICONES.candidatures}</div>
-        <div class="titre">Pas encore de données</div>
-        <p>Les statistiques (entonnoir, délais, sources) apparaîtront dès tes premières candidatures.</p>
+        <div class="titre">${t("statistiques.pas_de_donnees")}</div>
+        <p>${t("statistiques.pas_de_donnees_texte")}</p>
       </div>`;
   }
   const maximum = Math.max(1, ...stats.entonnoir.map((e) => e.nombre));
@@ -1917,7 +1959,7 @@ async function vueStats() {
     .map(
       (etape) => `
       <div class="ligne-barre">
-        <span class="libelle">${echapper(etape.etape)}</span>
+        <span class="libelle">${echapper(tv(etape.etape))}</span>
         <div class="piste"><div class="remplissage${etape.nombre === 0 ? " vide" : ""}" style="width:${(etape.nombre / maximum) * 100}%"></div></div>
         <span class="valeur">${etape.nombre}<span class="taux-detail"> · ${etape.taux}%</span></span>
       </div>`
@@ -1927,7 +1969,7 @@ async function vueStats() {
     .map(
       (source) => `
       <tr>
-        <td class="cellule-principale">${echapper(source.source)}</td>
+        <td class="cellule-principale">${echapper(tv(source.source))}</td>
         <td>${source.envoyees}</td>
         <td>${source.reponses}</td>
         <td>
@@ -1941,66 +1983,65 @@ async function vueStats() {
     .join("");
   return `
     <div class="entete-vue">
-      <div><h1>Statistiques</h1><div class="sous-titre">Ce qui marche, ce qui traîne - pour ajuster le tir</div></div>
+      <div><h1>${t("nav.statistiques")}</h1><div class="sous-titre">${t("statistiques.sous_titre")}</div></div>
     </div>
     <div class="rangee-kpi">
       <div class="tuile">
-        <div class="tuile-libelle">Délai moyen de réponse</div>
-        <div class="tuile-valeur">${stats.delai_moyen_reponse != null ? stats.delai_moyen_reponse + '<span style="font-size:16px;"> j</span>' : "-"}</div>
-        <div class="tuile-detail">${stats.nb_delais_reponse ? `sur ${stats.nb_delais_reponse} réponse(s) datée(s)` : "aucune réponse datée pour l'instant"}</div>
+        <div class="tuile-libelle">${t("statistiques.delai_reponse")}</div>
+        <div class="tuile-valeur">${stats.delai_moyen_reponse != null ? stats.delai_moyen_reponse + `<span style="font-size:16px;"> ${t("statistiques.jours_abrev")}</span>` : "-"}</div>
+        <div class="tuile-detail">${stats.nb_delais_reponse ? t("statistiques.sur_reponses_datees", { n: stats.nb_delais_reponse }) : t("statistiques.aucune_reponse_datee")}</div>
       </div>
       <div class="tuile">
-        <div class="tuile-libelle">Délai moyen jusqu'à l'entretien</div>
-        <div class="tuile-valeur">${stats.delai_moyen_entretien != null ? stats.delai_moyen_entretien + '<span style="font-size:16px;"> j</span>' : "-"}</div>
-        <div class="tuile-detail">entre l'envoi et la date d'entretien</div>
+        <div class="tuile-libelle">${t("statistiques.delai_entretien")}</div>
+        <div class="tuile-valeur">${stats.delai_moyen_entretien != null ? stats.delai_moyen_entretien + `<span style="font-size:16px;"> ${t("statistiques.jours_abrev")}</span>` : "-"}</div>
+        <div class="tuile-detail">${t("statistiques.entre_envoi_entretien")}</div>
       </div>
     </div>
     <div class="grille-bord">
       <div class="carte">
-        <h2>Candidatures envoyées par semaine</h2>
+        <h2>${t("statistiques.candidatures_par_semaine")}</h2>
         ${graphiqueHebdomadaire(stats.serie_hebdomadaire)}
       </div>
       <div class="carte">
-        <h2>Objectif hebdomadaire</h2>
+        <h2>${t("statistiques.objectif_hebdomadaire")}</h2>
         ${obj ? `
           <div class="ligne-barre">
-            <span class="libelle">${obj.nombre} / ${obj.objectif} envoyées</span>
+            <span class="libelle">${t("statistiques.objectif_ratio", { n: obj.nombre, objectif: obj.objectif })}</span>
             <div class="piste"><div class="remplissage${obj.atteint ? " atteint" : ""}" style="width:${obj.pourcentage}%"></div></div>
             <span class="valeur">${obj.pourcentage}%</span>
           </div>
-          <p class="sous-titre">Semaine du ${dateFr(obj.debut_semaine)} au ${dateFr(obj.fin_semaine)}${obj.atteint ? " - objectif atteint, bravo !" : "."}</p>
-        ` : `<p class="sous-titre">Règle un objectif hebdomadaire dans <a class="lien-detail" href="#/reglages">Réglages</a> pour suivre ta progression ici.</p>`}
+          <p class="sous-titre">${t("statistiques.semaine_du", { debut: dateFr(obj.debut_semaine), fin: dateFr(obj.fin_semaine) })}${obj.atteint ? " - " + t("statistiques.objectif_atteint") : "."}</p>
+        ` : `<p class="sous-titre">${t("statistiques.objectif_absent_debut")} <a class="lien-detail" href="#/reglages">${t("nav.reglages")}</a> ${t("statistiques.objectif_absent_fin")}</p>`}
       </div>
       <div class="carte">
-        <h2>Entonnoir (taux par rapport aux envoyées)</h2>
+        <h2>${t("statistiques.entonnoir_titre")}</h2>
         ${entonnoir}
       </div>
       <div class="carte">
-        <h2>Par source</h2>
+        <h2>${t("statistiques.par_source")}</h2>
         ${stats.par_source.length ? `
           <div class="enveloppe-tableau" style="border:none;"><table class="tableau" style="border:none;">
-            <thead><tr><th>Source</th><th>Envoyées</th><th>Réponses</th><th>Taux de réponse</th></tr></thead>
+            <thead><tr><th>${t("comparateur.source")}</th><th>${t("statistiques.envoyees")}</th><th>${t("statistiques.reponses")}</th><th>${t("statistiques.taux_reponse")}</th></tr></thead>
             <tbody>${sources}</tbody>
-          </table></div>` : `<div class="sous-titre">Renseigne la source de tes candidatures pour comparer.</div>`}
+          </table></div>` : `<div class="sous-titre">${t("statistiques.par_source_vide")}</div>`}
       </div>
       <div class="carte">
-        <h2>Liens d'offres</h2>
-        <p class="sous-titre">Un ping HTTP conservateur : seul un lien clairement retiré (404/410) est
-        signalé « mort » - souvent le signe que le poste a été pourvu.</p>
+        <h2>${t("statistiques.liens_offres")}</h2>
+        <p class="sous-titre">${t("statistiques.liens_offres_texte")}</p>
         <div class="rangee-kpi" style="margin:12px 0;">
-          <div class="tuile"><div class="tuile-libelle">Actifs</div><div class="tuile-valeur">${liens.actifs}</div></div>
-          <div class="tuile"><div class="tuile-libelle">Morts</div><div class="tuile-valeur">${liens.morts}</div></div>
-          <div class="tuile"><div class="tuile-libelle">Non vérifiés</div><div class="tuile-valeur">${liens.non_verifies}</div></div>
+          <div class="tuile"><div class="tuile-libelle">${t("statistiques.actifs")}</div><div class="tuile-valeur">${liens.actifs}</div></div>
+          <div class="tuile"><div class="tuile-libelle">${t("statistiques.morts")}</div><div class="tuile-valeur">${liens.morts}</div></div>
+          <div class="tuile"><div class="tuile-libelle">${t("statistiques.non_verifies")}</div><div class="tuile-valeur">${liens.non_verifies}</div></div>
         </div>
         ${liens.liens_morts.length ? liens.liens_morts.map((l) => `
           <div class="ligne-lien-mort">
             <span onclick="ouvrirDetailCandidature(${l.id})" style="cursor:pointer;">
               <strong>${echapper(l.entreprise)}</strong> - ${echapper(l.poste)}
             </span>
-            <a class="lien-detail" href="${echapper(l.lien_offre)}" target="_blank" rel="noopener">Voir l'offre</a>
+            <a class="lien-detail" href="${echapper(l.lien_offre)}" target="_blank" rel="noopener">${t("statistiques.voir_offre")}</a>
           </div>`).join("") : ""}
         <div class="actions-reglages">
-          <button class="btn btn-accent" id="btn-verifier-liens">Vérifier maintenant</button>
+          <button class="btn btn-accent" id="btn-verifier-liens">${t("statistiques.verifier_maintenant")}</button>
         </div>
         <p class="sous-titre" id="resultat-verification-liens" style="margin-top:8px;"></p>
       </div>
@@ -2012,19 +2053,20 @@ function activerStats() {
   if (!bouton) return;
   bouton.addEventListener("click", async () => {
     bouton.disabled = true;
-    bouton.textContent = "Vérification en cours…";
+    bouton.textContent = t("statistiques.verification_en_cours");
     try {
       const resultat = await api("/api/liens/verifier", { methode: "POST", corps: {} });
       document.getElementById("resultat-verification-liens").textContent =
-        `${resultat.verifies} lien(s) vérifié(s) : ${resultat.actifs} actif(s), ` +
-        `${resultat.morts} mort(s), ${resultat.inconnus} indéterminé(s).`;
-      toast("Vérification terminée");
+        t("statistiques.resultat_verification", {
+          verifies: resultat.verifies, actifs: resultat.actifs, morts: resultat.morts, inconnus: resultat.inconnus,
+        });
+      toast(t("statistiques.verification_terminee"));
       rendre();
     } catch (erreur) {
       toast(erreur.message, true);
     } finally {
       bouton.disabled = false;
-      bouton.textContent = "Vérifier maintenant";
+      bouton.textContent = t("statistiques.verifier_maintenant");
     }
   });
 }
@@ -2042,37 +2084,39 @@ function resultatRecherche(type, libelle, clic, titre, sousTitre, objet) {
         <span class="resultat-sous">${echapper(sousTitre || "")}</span>
       </div>
       ${objet.extrait ? `<div class="resultat-extrait">${echapper(objet.extrait)}</div>` : ""}
-      <div class="resultat-champs">Trouvé dans : ${objet.champs_trouves.map((c) => `<span class="puce">${echapper(c)}</span>`).join(" ")}</div>
+      <div class="resultat-champs">${t("recherche.trouve_dans")} ${objet.champs_trouves.map((c) => `<span class="puce">${echapper(tv(c))}</span>`).join(" ")}</div>
     </div>`;
 }
 
 async function vueRecherche() {
   const requete = etat.rechercheTexte.trim();
   let corps = `<div class="etat-vide"><div class="icone">${ICONES.boussole}</div>
-    <div class="titre">Tout retrouver, d'un coup d'œil</div>
-    <p>Tape un mot : candidatures, entreprises et contacts sont fouillés partout (postes, notes, offres, emails…). Raccourci : ⌘K.</p></div>`;
+    <div class="titre">${t("recherche.accroche_titre")}</div>
+    <p>${t("recherche.accroche_texte")}</p></div>`;
   if (requete) {
     const resultats = await api(`/api/recherche?q=${encodeURIComponent(requete)}`);
     const rendus = [
       ...resultats.candidatures.map((c) =>
-        resultatRecherche("candidature", "Candidature", `ouvrirDetailCandidature(${c.id})`,
-          `${c.entreprise} - ${c.poste}`, `${c.statut}${c.ville ? " · " + c.ville : ""}`, c)),
+        resultatRecherche("candidature", t("recherche.badge_candidature"), `ouvrirDetailCandidature(${c.id})`,
+          `${c.entreprise} - ${c.poste}`, `${tv(c.statut)}${c.ville ? " · " + c.ville : ""}`, c)),
       ...resultats.entreprises.map((e) =>
-        resultatRecherche("entreprise", "Entreprise", `ouvrirDetailEntreprise(${e.id})`,
+        resultatRecherche("entreprise", t("recherche.badge_entreprise"), `ouvrirDetailEntreprise(${e.id})`,
           e.nom, e.site_web || "", e)),
       ...resultats.contacts.map((c) =>
-        resultatRecherche("contact", "Contact", `ouvrirDetailContact(${c.id})`,
+        resultatRecherche("contact", t("recherche.badge_contact"), `ouvrirDetailContact(${c.id})`,
           c.nom, `${c.entreprise}${c.poste ? " · " + c.poste : ""}`, c)),
     ];
     corps = rendus.length
       ? `<div class="liste-resultats">${rendus.join("")}</div>
-         <p class="sous-titre">${rendus.length} résultat(s) - ${resultats.candidatures.length} candidature(s), ${resultats.entreprises.length} entreprise(s), ${resultats.contacts.length} contact(s)</p>`
-      : `<div class="etat-vide"><div class="titre">Aucun résultat pour « ${echapper(requete)} »</div><p>La recherche ignore la casse et les accents. Essaie un mot plus court.</p></div>`;
+         <p class="sous-titre">${t("recherche.resultats_compte", {
+           n: rendus.length, cand: resultats.candidatures.length, ent: resultats.entreprises.length, contacts: resultats.contacts.length,
+         })}</p>`
+      : `<div class="etat-vide"><div class="titre">${t("recherche.aucun_resultat", { requete: echapper(requete) })}</div><p>${t("recherche.aucun_resultat_texte")}</p></div>`;
   }
   return `
-    <div class="entete-vue"><h1>Recherche</h1></div>
+    <div class="entete-vue"><h1>${t("nav.recherche")}</h1></div>
     <input type="text" id="champ-recherche" class="champ-recherche-grande"
-           placeholder="Rechercher partout - entreprise, poste, note, contact…" value="${echapper(etat.rechercheTexte)}">
+           placeholder="${t("recherche.placeholder")}" value="${echapper(etat.rechercheTexte)}">
     ${corps}`;
 }
 
@@ -2109,35 +2153,43 @@ async function vueReglages() {
   const estAnthropic = r.fournisseur_ia !== "openai_compatible";
   return `
     <div class="entete-vue">
-      <div><h1>Réglages</h1><div class="sous-titre">Assistant IA, dossier de données, sauvegardes - tout reste sur cette machine</div></div>
+      <div><h1>${t("nav.reglages")}</h1><div class="sous-titre">${t("reglages.sous_titre")}</div></div>
     </div>
     <div class="grille-bord">
       <div class="carte">
-        <h2>Assistant IA - analyse d'offres</h2>
-        <p class="sous-titre">Avec une clé API (de n'importe quel fournisseur), le formulaire
-        « Nouvelle candidature » sait se pré-remplir en collant le texte d'une offre. La clé est
-        stockée dans la base locale, masquée dans l'interface, jamais exportée ni partagée. Rien
-        n'est écrit sans ta validation.</p>
+        <h2>${t("reglages.langue_titre")}</h2>
+        <p class="sous-titre">${t("reglages.langue_texte")}</p>
+        <div class="champ" style="margin-top:12px; max-width:220px;">
+          <label for="reg-langue">${t("reglages.langue_label")}</label>
+          <select id="reg-langue">
+            ${(window.LANGUES_DISPONIBLES || []).map((l) => `<option value="${l.code}"${l.code === etat.langue ? " selected" : ""}>${echapper(l.nom)}</option>`).join("")}
+          </select>
+        </div>
+      </div>
+
+      <div class="carte">
+        <h2>${t("reglages.ia_titre")}</h2>
+        <p class="sous-titre">${t("reglages.ia_texte")}</p>
 
         <div class="champ" style="margin-top:12px; max-width:320px;">
-          <label for="reg-fournisseur">Fournisseur</label>
+          <label for="reg-fournisseur">${t("reglages.fournisseur")}</label>
           <select id="reg-fournisseur">
-            <option value="anthropic"${estAnthropic ? " selected" : ""}>Anthropic (Claude)</option>
-            <option value="openai_compatible"${!estAnthropic ? " selected" : ""}>Compatible OpenAI (OpenAI, Mistral, Groq, Gemini, Ollama…)</option>
+            <option value="anthropic"${estAnthropic ? " selected" : ""}>${t("reglages.fournisseur_anthropic")}</option>
+            <option value="openai_compatible"${!estAnthropic ? " selected" : ""}>${t("reglages.fournisseur_generique")}</option>
           </select>
         </div>
 
         <div class="champ" style="margin-top:10px;">
-          <label for="reg-cle">Clé API</label>
+          <label for="reg-cle">${t("reglages.cle_api")}</label>
           <div class="champ-mdp">
             <input type="password" id="reg-cle" autocomplete="off"
-                   placeholder="${r.cle_api_definie ? `Clé enregistrée (${echapper(r.cle_api_masquee)}) - coller ici pour la remplacer` : "sk-…"}">
-            <button type="button" class="btn btn-discret btn-oeil" data-cible="reg-cle">Afficher</button>
+                   placeholder="${r.cle_api_definie ? t("reglages.cle_enregistree", { cle: echapper(r.cle_api_masquee) }) : "sk-…"}">
+            <button type="button" class="btn btn-discret btn-oeil" data-cible="reg-cle">${t("commun.afficher")}</button>
           </div>
         </div>
 
         <div id="bloc-fournisseur-anthropic" class="champ" style="margin-top:10px; max-width:320px;"${estAnthropic ? "" : " hidden"}>
-          <label for="reg-modele-anthropic">Modèle</label>
+          <label for="reg-modele-anthropic">${t("reglages.modele")}</label>
           <select id="reg-modele-anthropic">
             ${modelesAnthropic.map((m) => `<option${m === r.modele_ia ? " selected" : ""}>${m}</option>`).join("")}
           </select>
@@ -2145,141 +2197,116 @@ async function vueReglages() {
 
         <div id="bloc-fournisseur-generique"${estAnthropic ? " hidden" : ""}>
           <div class="champ" style="margin-top:10px;">
-            <label for="reg-modele-generique">Nom du modèle</label>
+            <label for="reg-modele-generique">${t("reglages.nom_modele")}</label>
             <input type="text" id="reg-modele-generique"
                    placeholder="gpt-4o-mini, mistral-large-latest, gemini-2.0-flash, llama3.1 (Ollama)…"
                    value="${!estAnthropic ? echapper(r.modele_ia || "") : ""}">
           </div>
           <div class="champ" style="margin-top:10px;">
-            <label for="reg-base-url">URL de base (optionnel)</label>
+            <label for="reg-base-url">${t("reglages.url_base")}</label>
             <input type="text" id="reg-base-url"
-                   placeholder="Vide = api.openai.com - ou l'URL d'un autre fournisseur"
+                   placeholder="${t("reglages.url_base_placeholder")}"
                    value="${echapper(r.ia_base_url || "")}">
           </div>
-          <p class="sous-titre">Exemples : Google Gemini → https://generativelanguage.googleapis.com/v1beta/openai/
-          · Mistral → https://api.mistral.ai/v1 · Groq → https://api.groq.com/openai/v1
-          · Ollama local → http://localhost:11434/v1</p>
+          <p class="sous-titre">${t("reglages.exemples_fournisseurs")}</p>
         </div>
 
         <label class="case" id="ligne-recherche-web"${estAnthropic ? "" : " hidden"}>
           <input type="checkbox" id="reg-web" ${r.recherche_web === "Oui" ? "checked" : ""}>
-          Chercher automatiquement le contexte de l'entreprise sur le web (Anthropic uniquement, un appel de plus par analyse)
+          ${t("reglages.recherche_web_label")}
         </label>
-        ${estAnthropic ? "" : `<p class="sous-titre">La recherche automatique de contexte entreprise n'est disponible qu'avec Anthropic.</p>`}
+        ${estAnthropic ? "" : `<p class="sous-titre">${t("reglages.recherche_web_indisponible")}</p>`}
 
         <div class="actions-reglages">
-          <button class="btn btn-accent" id="reg-enregistrer">Enregistrer</button>
-          <button class="btn" id="reg-tester"${r.cle_api_definie ? "" : " disabled"}>Tester la connexion</button>
-          ${r.cle_api_definie ? `<button class="btn btn-danger" id="reg-supprimer-cle">Supprimer la clé</button>` : ""}
+          <button class="btn btn-accent" id="reg-enregistrer">${t("commun.enregistrer")}</button>
+          <button class="btn" id="reg-tester"${r.cle_api_definie ? "" : " disabled"}>${t("reglages.tester_connexion")}</button>
+          ${r.cle_api_definie ? `<button class="btn btn-danger" id="reg-supprimer-cle">${t("reglages.supprimer_cle")}</button>` : ""}
         </div>
       </div>
 
       <div class="carte">
-        <h2>Dossier de données</h2>
-        <p class="sous-titre">Documents joints (CV, lettres, offres en PDF) et sauvegardes de la
-        base sont rangés ici, comme n'importe quel autre dossier - visibles et mis à jour dans le
-        Finder en temps réel. Choisis un dossier suivi par iCloud Drive ou Dropbox pour qu'ils s'y
-        synchronisent automatiquement, ou garde l'emplacement par défaut.</p>
+        <h2>${t("reglages.dossier_titre")}</h2>
+        <p class="sous-titre">${t("reglages.dossier_texte")}</p>
         <div class="champ" style="margin-top:12px;">
-          <label>Emplacement actuel</label>
-          <input type="text" value="${echapper(r.dossier_donnees || "Par défaut - dossier du programme")}" readonly>
+          <label>${t("reglages.emplacement_actuel")}</label>
+          <input type="text" value="${echapper(r.dossier_donnees || t("reglages.emplacement_defaut"))}" readonly>
         </div>
         <div class="actions-reglages">
-          <button class="btn btn-accent" id="reg-choisir-dossier">Choisir un dossier…</button>
-          ${r.dossier_donnees ? `<button class="btn" id="reg-dossier-defaut">Revenir à l'emplacement par défaut</button>` : ""}
+          <button class="btn btn-accent" id="reg-choisir-dossier">${t("reglages.choisir_dossier")}</button>
+          ${r.dossier_donnees ? `<button class="btn" id="reg-dossier-defaut">${t("reglages.revenir_par_defaut")}</button>` : ""}
         </div>
-        <p class="sous-titre">Les fichiers déjà présents dans l'ancien emplacement n'y sont pas
-        déplacés automatiquement - seuls les prochains y sont écrits.</p>
+        <p class="sous-titre">${t("reglages.dossier_note")}</p>
       </div>
 
       <div class="carte">
-        <h2>Sauvegardes</h2>
-        <p class="sous-titre">Une copie datée de la base est créée automatiquement à chaque lancement
-        de l'appli (les 10 dernières sont conservées). L'export Excel est la sauvegarde lisible et
-        partageable ; la copie de la base est la sauvegarde intégrale (mots de passe et réglages compris).</p>
+        <h2>${t("reglages.sauvegardes_titre")}</h2>
+        <p class="sous-titre">${t("reglages.sauvegardes_texte")}</p>
         <div class="actions-reglages">
-          <button class="btn btn-accent" id="reg-sauvegarder">Sauvegarder maintenant</button>
+          <button class="btn btn-accent" id="reg-sauvegarder">${t("reglages.sauvegarder_maintenant")}</button>
         </div>
         <div id="reg-resultat-sauvegarde" class="sous-titre" style="margin-top:8px;"></div>
       </div>
 
       <div class="carte">
-        <h2>Objectif hebdomadaire</h2>
-        <p class="sous-titre">Un nombre de candidatures à envoyer chaque semaine (lundi-dimanche),
-        la progression s'affiche dans Statistiques. Laisser vide pour désactiver.</p>
+        <h2>${t("statistiques.objectif_hebdomadaire")}</h2>
+        <p class="sous-titre">${t("reglages.objectif_texte")}</p>
         <div class="champ" style="margin-top:12px; max-width:160px;">
-          <label for="reg-objectif">Candidatures envoyées / semaine</label>
+          <label for="reg-objectif">${t("reglages.objectif_label")}</label>
           <input type="number" id="reg-objectif" min="1" step="1"
                  value="${echapper(r.objectif_hebdomadaire || "")}" placeholder="ex. 5">
         </div>
         <div class="actions-reglages">
-          <button class="btn btn-accent" id="reg-enregistrer-objectif">Enregistrer</button>
+          <button class="btn btn-accent" id="reg-enregistrer-objectif">${t("commun.enregistrer")}</button>
         </div>
       </div>
 
       <div class="carte">
-        <h2>Notifications proactives</h2>
-        <p class="sous-titre">Avec <code>Azimut Widget.app</code> ouvert (barre de menus), une
-        notification macOS s'affiche dès qu'un lien d'offre meurt ou qu'une relance devient due,
-        sans avoir besoin d'ouvrir la fenêtre principale. La première fois, macOS demande
-        d'autoriser les notifications pour le widget.</p>
+        <h2>${t("reglages.notifications_titre")}</h2>
+        <p class="sous-titre">${t("reglages.notifications_texte")}</p>
         <label class="case" style="margin-top:10px;">
           <input type="checkbox" id="reg-notifications" ${r.notifications_macos === "Oui" ? "checked" : ""}>
-          Activer les notifications proactives
+          ${t("reglages.notifications_case")}
         </label>
       </div>
 
       <div class="carte">
-        <h2>Vue compagnon (iPhone / iPad)</h2>
-        <p class="sous-titre">Une page en lecture seule (relances du jour, prochain entretien,
-        liste des candidatures) accessible depuis ton téléphone, <strong>sur le même réseau
-        Wi-Fi que ce Mac</strong> - sans app à installer, sans compte, sans cloud. Aucun mot de
-        passe de portail ni clé API n'y transite jamais. Protégée par un code d'accès ; à
-        activer une fois puis <strong>relancer Azimut</strong> pour que ça prenne effet.</p>
+        <h2>${t("reglages.compagnon_titre")}</h2>
+        <p class="sous-titre">${t("reglages.compagnon_texte")}</p>
         <label class="case" style="margin-top:10px;">
           <input type="checkbox" id="reg-compagnon-actif" ${r.compagnon_actif === "Oui" ? "checked" : ""}>
-          Activer la vue compagnon
+          ${t("reglages.compagnon_case")}
         </label>
         ${r.compagnon_actif === "Oui" ? `
           <div class="champ" style="margin-top:12px;">
-            <label>Adresse à ouvrir sur le téléphone</label>
+            <label>${t("reglages.compagnon_adresse")}</label>
             <input type="text" readonly value="http://${echapper(r.compagnon_ip)}:${r.compagnon_port}">
           </div>
           <div class="champ" style="margin-top:10px; max-width:220px;">
-            <label>Code d'accès</label>
+            <label>${t("reglages.compagnon_code")}</label>
             <input type="text" readonly value="${echapper(r.compagnon_code || "")}">
           </div>
           <div class="actions-reglages">
-            <button class="btn" id="reg-regenerer-code">Régénérer le code</button>
+            <button class="btn" id="reg-regenerer-code">${t("reglages.regenerer_code")}</button>
           </div>` : ""}
       </div>
 
       <div class="carte">
-        <h2>Capture rapide depuis Safari</h2>
-        <p class="sous-titre">Un Raccourci macOS pour envoyer la page (ou le texte sélectionné) vue
-        dans Safari directement vers Azimut, en brouillon à compléter - Azimut doit être ouvert pour
-        le recevoir. À construire une fois dans l'app Raccourcis :</p>
+        <h2>${t("reglages.safari_titre")}</h2>
+        <p class="sous-titre">${t("reglages.safari_texte")}</p>
         <div class="bloc-raccourci">
           <ol>
-            <li>Nouveau Raccourci, ajouter <strong>« Obtenir la page web actuelle »</strong> (Safari).</li>
-            <li>Ajouter <strong>« Obtenir le contenu de l'URL »</strong> : méthode <code>POST</code>,
-              URL <code>${echapper(location.origin)}/api/rapide/offre</code>, corps JSON avec les champs
-              <code>lien</code> (la page web actuelle) et <code>texte</code> (le texte sélectionné, si besoin
-              via « Obtenir le texte sélectionné » avant cette étape).</li>
-            <li>Ajouter <strong>« Afficher une notification »</strong> pour voir le résultat.</li>
-            <li>Épingler le Raccourci au Dock, au menu Partage, ou lui donner un raccourci clavier.</li>
+            <li>${t("reglages.safari_etape1")}</li>
+            <li>${t("reglages.safari_etape2", { url: echapper(location.origin) })}</li>
+            <li>${t("reglages.safari_etape3")}</li>
+            <li>${t("reglages.safari_etape4")}</li>
           </ol>
         </div>
-        <p class="sous-titre" style="margin-top:8px;">La candidature créée porte un statut « À préparer »
-        et une note qui rappelle son origine - à relire et compléter dans Azimut.</p>
+        <p class="sous-titre" style="margin-top:8px;">${t("reglages.safari_note")}</p>
       </div>
 
       <div class="carte">
-        <h2>Pour les IA (Claude Code ou autre)</h2>
-        <p class="sous-titre">Avec ou sans clé API ici, n'importe quelle IA peut alimenter la base
-        proprement : le fichier <code>CLAUDE.md</code> à la racine du projet documente les fonctions
-        Python, la CLI et les règles (valeurs autorisées, anti-doublons, jamais de SQL direct).
-        Il suffit d'ouvrir le dossier du projet avec l'IA et de lui coller une offre.</p>
+        <h2>${t("reglages.ia_dev_titre")}</h2>
+        <p class="sous-titre">${t("reglages.ia_dev_texte")}</p>
       </div>
     </div>`;
 }
@@ -2313,7 +2340,7 @@ function activerReglages() {
     if (cle) corps.cle_api = cle;
     try {
       etat.ia = await api("/api/reglages", { methode: "POST", corps });
-      toast("Réglages enregistrés");
+      toast(t("reglages.reglages_enregistres"));
       rendre();
     } catch (erreur) {
       toast(erreur.message, true);
@@ -2323,15 +2350,15 @@ function activerReglages() {
   document.getElementById("reg-tester").addEventListener("click", async (evenement) => {
     const cible = evenement.currentTarget;
     cible.disabled = true;
-    cible.textContent = "Test en cours…";
+    cible.textContent = t("reglages.test_en_cours");
     try {
       const resultat = await api("/api/agent/tester", { methode: "POST" });
-      toast(`Connexion réussie (${resultat.fournisseur} - ${resultat.modele})`);
+      toast(t("reglages.connexion_reussie", { fournisseur: resultat.fournisseur, modele: resultat.modele }));
     } catch (erreur) {
       toast(erreur.message, true);
     } finally {
       cible.disabled = false;
-      cible.textContent = "Tester la connexion";
+      cible.textContent = t("reglages.tester_connexion");
     }
   });
 
@@ -2339,13 +2366,13 @@ function activerReglages() {
   if (supprimerCle) {
     supprimerCle.addEventListener("click", async () => {
       const accord = await confirmer(
-        "Supprimer la clé API ?",
-        "L'analyse d'offres sera désactivée jusqu'à ce qu'une nouvelle clé soit enregistrée."
+        t("reglages.supprimer_cle_titre"),
+        t("reglages.supprimer_cle_texte")
       );
       if (!accord) return;
       try {
         etat.ia = await api("/api/reglages", { methode: "POST", corps: { cle_api: "" } });
-        toast("Clé supprimée");
+        toast(t("reglages.cle_supprimee"));
         rendre();
       } catch (erreur) {
         toast(erreur.message, true);
@@ -2357,8 +2384,8 @@ function activerReglages() {
     try {
       const resultat = await api("/api/sauvegarde", { methode: "POST" });
       document.getElementById("reg-resultat-sauvegarde").textContent =
-        `Sauvegarde créée : ${resultat.chemin}`;
-      toast("Base sauvegardée");
+        t("reglages.sauvegarde_creee", { chemin: resultat.chemin });
+      toast(t("reglages.base_sauvegardee"));
     } catch (erreur) {
       toast(erreur.message, true);
     }
@@ -2371,23 +2398,23 @@ function activerReglages() {
       try {
         const dossier = await window.pywebview.api.choisir_dossier_donnees();
         if (dossier) {
-          toast("Dossier de données mis à jour");
+          toast(t("reglages.dossier_mis_a_jour"));
           rendre();
         }
       } catch (erreur) {
-        toast("Sélecteur indisponible : " + erreur.message, true);
+        toast(t("reglages.selecteur_indisponible") + " " + erreur.message, true);
       }
       return;
     }
     const chemin = await demanderTexte(
-      "Dossier de données",
+      t("reglages.dossier_titre"),
       "/Users/toi/Documents/Azimut",
       etat.ia.dossier_donnees || ""
     );
     if (chemin === null) return;
     try {
       await api("/api/reglages/dossier_donnees", { methode: "POST", corps: { dossier: chemin } });
-      toast("Dossier de données mis à jour");
+      toast(t("reglages.dossier_mis_a_jour"));
       rendre();
     } catch (erreur) {
       toast(erreur.message, true);
@@ -2399,7 +2426,7 @@ function activerReglages() {
     boutonDefaut.addEventListener("click", async () => {
       try {
         await api("/api/reglages/dossier_donnees", { methode: "POST", corps: { dossier: "" } });
-        toast("Retour à l'emplacement par défaut");
+        toast(t("reglages.retour_par_defaut"));
         rendre();
       } catch (erreur) {
         toast(erreur.message, true);
@@ -2411,7 +2438,7 @@ function activerReglages() {
     const valeur = document.getElementById("reg-objectif").value.trim();
     try {
       await api("/api/reglages", { methode: "POST", corps: { objectif_hebdomadaire: valeur } });
-      toast(valeur ? "Objectif enregistré" : "Objectif désactivé");
+      toast(valeur ? t("reglages.objectif_enregistre") : t("reglages.objectif_desactive"));
       rendre();
     } catch (erreur) {
       toast(erreur.message, true);
@@ -2423,8 +2450,8 @@ function activerReglages() {
       await api("/api/reglages/compagnon", { methode: "POST", corps: { actif: evenement.target.checked } });
       toast(
         evenement.target.checked
-          ? "Vue compagnon activée - relance Azimut pour qu'elle démarre"
-          : "Vue compagnon désactivée - relance Azimut pour l'arrêter"
+          ? t("reglages.compagnon_active")
+          : t("reglages.compagnon_desactive")
       );
       rendre();
     } catch (erreur) {
@@ -2436,13 +2463,13 @@ function activerReglages() {
   if (boutonRegenererCode) {
     boutonRegenererCode.addEventListener("click", async () => {
       const accord = await confirmer(
-        "Régénérer le code d'accès ?",
-        "L'ancien code cessera de fonctionner immédiatement - les appareils déjà connectés devront ressaisir le nouveau."
+        t("reglages.regenerer_code_titre"),
+        t("reglages.regenerer_code_texte")
       );
       if (!accord) return;
       try {
         await api("/api/reglages/compagnon", { methode: "POST", corps: { regenerer_code: true } });
-        toast("Nouveau code généré");
+        toast(t("reglages.nouveau_code_genere"));
         rendre();
       } catch (erreur) {
         toast(erreur.message, true);
@@ -2456,11 +2483,28 @@ function activerReglages() {
         methode: "POST",
         corps: { notifications_macos: evenement.target.checked ? "Oui" : "Non" },
       });
-      toast(evenement.target.checked ? "Notifications activées" : "Notifications désactivées");
+      toast(evenement.target.checked ? t("reglages.notifications_activees") : t("reglages.notifications_desactivees"));
     } catch (erreur) {
       toast(erreur.message, true);
     }
   });
+
+  const selectLangue = document.getElementById("reg-langue");
+  if (selectLangue) {
+    selectLangue.addEventListener("change", async (evenement) => {
+      const langue = evenement.target.value;
+      try {
+        await api("/api/reglages", { methode: "POST", corps: { langue } });
+        etat.langue = langue;
+        document.documentElement.lang = langue;
+        traduireStatique();
+        toast(t("reglages.langue_changee"));
+        rendre();
+      } catch (erreur) {
+        toast(erreur.message, true);
+      }
+    });
+  }
 }
 
 /* ========================================================================
@@ -2474,19 +2518,19 @@ async function vueModeEntretien(numero) {
   ]);
   return `
     <div class="entete-vue">
-      <button class="btn" onclick="location.hash='#/candidatures'">← Retour</button>
+      <button class="btn" onclick="location.hash='#/candidatures'">${t("entretien.retour")}</button>
       <div style="flex:1;">
         <h1>${echapper(cand.entreprise)}</h1>
-        <div class="sous-titre">${echapper(cand.poste)} - mode entretien${cand.date_entretien ? " · " + dateFr(cand.date_entretien) : ""}</div>
+        <div class="sous-titre">${echapper(cand.poste)} - ${t("entretien.mode_entretien_soustitre")}${cand.date_entretien ? " · " + dateFr(cand.date_entretien) : ""}</div>
       </div>
       <span class="sous-titre" id="indicateur-notes"></span>
     </div>
     <div class="mode-entretien">
       <div class="carte fiche">${rendreMarkdown(fiche.markdown)}</div>
       <div class="carte colonne-notes">
-        <h2>Notes d'entretien</h2>
+        <h2>${t("formulaire.notes_entretien")}</h2>
         <textarea id="zone-notes-entretien"
-          placeholder="Prends tes notes ici pendant le rendez-vous - elles s'enregistrent automatiquement dans la candidature.">${echapper(cand.notes_entretien || "")}</textarea>
+          placeholder="${t("entretien.notes_placeholder")}">${echapper(cand.notes_entretien || "")}</textarea>
       </div>
     </div>`;
 }
@@ -2498,7 +2542,7 @@ function activerModeEntretien(numero) {
   zone.focus();
   let minuteur;
   zone.addEventListener("input", () => {
-    indicateur.textContent = "Enregistrement…";
+    indicateur.textContent = t("entretien.enregistrement_en_cours");
     clearTimeout(minuteur);
     minuteur = setTimeout(async () => {
       try {
@@ -2506,8 +2550,8 @@ function activerModeEntretien(numero) {
           methode: "PATCH",
           corps: { notes_entretien: zone.value },
         });
-        const heure = new Date().toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
-        indicateur.textContent = `Enregistré à ${heure}`;
+        const heure = new Date().toLocaleTimeString(etat.langue === "en" ? "en-US" : "fr-FR", { hour: "2-digit", minute: "2-digit" });
+        indicateur.textContent = t("entretien.enregistre_a", { heure });
       } catch (erreur) {
         indicateur.textContent = "";
         toast(erreur.message, true);
@@ -2537,8 +2581,8 @@ function confirmer(titre, message) {
     ouvrirModale(
       titre,
       `<p>${echapper(message)}</p>`,
-      `<button class="btn" id="btn-annuler">Annuler</button>
-       <button class="btn btn-accent" id="btn-confirmer" style="background:var(--danger);border-color:var(--danger);">Supprimer</button>`,
+      `<button class="btn" id="btn-annuler">${t("commun.annuler")}</button>
+       <button class="btn btn-accent" id="btn-confirmer" style="background:var(--danger);border-color:var(--danger);">${t("commun.supprimer")}</button>`,
       true
     );
     document.getElementById("btn-annuler").addEventListener("click", () => {
@@ -2560,8 +2604,8 @@ function demanderTexte(titre, placeholder, valeurInitiale = "") {
       titre,
       `<input type="text" id="champ-demande-texte" value="${echapper(valeurInitiale)}"
               placeholder="${echapper(placeholder)}" style="width:100%;">`,
-      `<button class="btn" id="btn-annuler-texte">Annuler</button>
-       <button class="btn btn-accent" id="btn-valider-texte">Valider</button>`,
+      `<button class="btn" id="btn-annuler-texte">${t("commun.annuler")}</button>
+       <button class="btn btn-accent" id="btn-valider-texte">${t("entretien.valider")}</button>`,
       true
     );
     const champ = document.getElementById("champ-demande-texte");
@@ -2591,19 +2635,19 @@ function confirmerSimilaires(liste) {
       (r) => `
       <div class="ligne-similaire">
         <div><strong>${echapper(r.entreprise)}</strong> - ${echapper(r.poste)}
-          <span class="cellule-secondaire">(${echapper(r.statut)})</span></div>
+          <span class="cellule-secondaire">(${echapper(tv(r.statut))})</span></div>
         <div>${r.raisons.map((raison) => `<span class="puce">${echapper(raison)}</span>`).join(" ")}</div>
       </div>`
     )
     .join("");
   return new Promise((resoudre) => {
     ouvrirModale(
-      "Candidature(s) proche(s) trouvée(s)",
-      `<p>Ça ressemble peut-être à une candidature déjà enregistrée :</p>
+      t("entretien.similaires_titre"),
+      `<p>${t("entretien.similaires_texte")}</p>
        <div class="liste-similaires">${lignes}</div>
-       <p class="sous-titre">Ce n'est qu'un avertissement - si c'est bien une candidature différente, continue normalement.</p>`,
-      `<button class="btn" id="btn-annuler-similaire">Modifier avant d'ajouter</button>
-       <button class="btn btn-accent" id="btn-continuer-similaire">Créer quand même</button>`,
+       <p class="sous-titre">${t("entretien.similaires_avertissement")}</p>`,
+      `<button class="btn" id="btn-annuler-similaire">${t("entretien.modifier_avant_ajout")}</button>
+       <button class="btn btn-accent" id="btn-continuer-similaire">${t("entretien.creer_quand_meme")}</button>`,
       true
     );
     document.getElementById("btn-annuler-similaire").addEventListener("click", () => {
@@ -2654,10 +2698,10 @@ async function ouvrirFicheEntretien(numero) {
   try {
     const fiche = await api(`/api/entretien/${numero}`);
     ouvrirModale(
-      "Fiche de préparation d'entretien",
+      t("entretien.fiche_titre"),
       `<div class="fiche">${rendreMarkdown(fiche.markdown)}</div>`,
-      `<a class="btn" href="/api/entretien/${numero}/telecharger">Télécharger en .md</a>
-       <button class="btn btn-accent" onclick="fermerModale()">Fermer</button>`
+      `<a class="btn" href="/api/entretien/${numero}/telecharger">${t("entretien.telecharger_md")}</a>
+       <button class="btn btn-accent" onclick="fermerModale()">${t("commun.fermer")}</button>`
     );
   } catch (erreur) {
     toast(erreur.message, true);
@@ -2686,7 +2730,7 @@ document.addEventListener("keydown", (evenement) => {
 });
 document.getElementById("btn-export").addEventListener("click", () => {
   window.location.href = "/api/export/excel";
-  toast("Export Excel en cours de téléchargement…");
+  toast(t("branchements.export_en_cours"));
 });
 document.getElementById("btn-import").addEventListener("click", () => {
   document.getElementById("fichier-import").click();
@@ -2700,28 +2744,28 @@ document.getElementById("fichier-import").addEventListener("change", async (even
   try {
     const reponse = await fetch("/api/import/excel", { method: "POST", body: formulaire });
     const rapport = await reponse.json();
-    if (!reponse.ok) throw new Error(rapport.erreur || "Import impossible.");
+    if (!reponse.ok) throw new Error(rapport.erreur || t("branchements.import_impossible"));
     const morceaux = [
-      `<p><strong>${rapport.candidatures_ajoutees}</strong> candidature(s), ` +
-      `<strong>${rapport.contacts_ajoutes}</strong> contact(s) et ` +
-      `<strong>${rapport.entreprises_ajoutees}</strong> entreprise(s) ajoutée(s).</p>`,
+      `<p>${t("branchements.import_resume", {
+        cand: rapport.candidatures_ajoutees, contacts: rapport.contacts_ajoutes, ent: rapport.entreprises_ajoutees,
+      })}</p>`,
     ];
     if (rapport.ignores.length) {
       morceaux.push(
-        `<p><strong>Doublons ignorés</strong> (déjà dans la base, rien n'a été écrasé) :</p>` +
-        `<ul>${rapport.ignores.map((t) => `<li>${echapper(t)}</li>`).join("")}</ul>`
+        `<p><strong>${t("branchements.doublons_ignores")}</strong> ${t("branchements.doublons_ignores_detail")}</p>` +
+        `<ul>${rapport.ignores.map((texte) => `<li>${echapper(texte)}</li>`).join("")}</ul>`
       );
     }
     if (rapport.erreurs.length) {
       morceaux.push(
-        `<p><strong>Lignes non importées</strong> :</p>` +
-        `<ul>${rapport.erreurs.map((t) => `<li>${echapper(t)}</li>`).join("")}</ul>`
+        `<p><strong>${t("branchements.lignes_non_importees")}</strong></p>` +
+        `<ul>${rapport.erreurs.map((texte) => `<li>${echapper(texte)}</li>`).join("")}</ul>`
       );
     }
     ouvrirModale(
-      "Rapport d'import",
+      t("branchements.rapport_import"),
       morceaux.join(""),
-      `<button class="btn btn-accent" onclick="fermerModale()">Fermer</button>`
+      `<button class="btn btn-accent" onclick="fermerModale()">${t("commun.fermer")}</button>`
     );
     rendre();
   } catch (erreur) {
@@ -2732,17 +2776,19 @@ document.getElementById("fichier-import").addEventListener("change", async (even
 /* Import CSV générique (LinkedIn, Indeed, ou tout autre export) : deux
    étapes - un aperçu des colonnes détectées, puis une correspondance
    colonne -> champ choisie par l'utilisateur avant d'importer. */
-const LIBELLES_CHAMPS_CSV = {
-  entreprise: "Entreprise *",
-  poste: "Poste / intitulé *",
-  statut: "Statut",
-  date_envoi: "Date d'envoi",
-  ville: "Ville",
-  mode_travail: "Mode de travail",
-  lien_offre: "Lien de l'offre",
-  source: "Source",
-  notes: "Notes",
-};
+function libellesChampsCsv() {
+  return {
+    entreprise: t("formulaire.entreprise_requis"),
+    poste: t("formulaire.poste_requis"),
+    statut: t("candidatures.col_statut"),
+    date_envoi: t("formulaire.date_envoi"),
+    ville: t("candidatures.col_ville"),
+    mode_travail: t("comparateur.mode_travail"),
+    lien_offre: t("formulaire.lien_offre"),
+    source: t("comparateur.source"),
+    notes: t("formulaire.notes"),
+  };
+}
 
 document.getElementById("btn-import-csv").addEventListener("click", () => {
   document.getElementById("fichier-import-csv").click();
@@ -2766,8 +2812,9 @@ document.getElementById("fichier-import-csv").addEventListener("change", async (
 
 function ouvrirCorrespondanceCsv(apercu) {
   const v = etat.valeurs;
+  const libellesChampsCsvActuels = libellesChampsCsv();
   const optionsColonnes = (selection) => `
-    <option value="">non importé</option>
+    <option value="">${t("branchements.non_importe")}</option>
     ${apercu.entetes.map((e) => `<option value="${echapperAttribut(e)}"${e === selection ? " selected" : ""}>${echapper(e)}</option>`).join("")}`;
 
   // Devine une correspondance de départ par ressemblance de nom, pour éviter
@@ -2790,7 +2837,7 @@ function ouvrirCorrespondanceCsv(apercu) {
     .join("");
 
   const corps = `
-    <p class="sous-titre">Associe chaque champ à une colonne du fichier - les colonnes non associées sont ignorées.</p>
+    <p class="sous-titre">${t("branchements.associe_colonnes")}</p>
     <div class="enveloppe-tableau" style="margin-bottom:14px;max-height:160px;">
       <table class="tableau"><thead><tr>${apercu.entetes.map((e) => `<th>${echapper(e)}</th>`).join("")}</tr></thead>
       <tbody>${lignesApercu}</tbody></table>
@@ -2798,26 +2845,26 @@ function ouvrirCorrespondanceCsv(apercu) {
     <form id="form-correspondance-csv" class="grille-form" onsubmit="return false;">
       ${apercu.champs.map((champ) => `
         <div class="champ">
-          <label for="csv-${champ}">${LIBELLES_CHAMPS_CSV[champ] || champ}</label>
+          <label for="csv-${champ}">${libellesChampsCsvActuels[champ] || champ}</label>
           <select id="csv-${champ}" data-champ="${champ}">${optionsColonnes(suggestions[champ] || "")}</select>
         </div>`).join("")}
     </form>
     <div class="grille-form" style="margin-top:4px;">
       <div class="champ">
-        <label for="csv-statut-defaut">Statut par défaut (si non associé ci-dessus)</label>
+        <label for="csv-statut-defaut">${t("branchements.statut_par_defaut")}</label>
         <select id="csv-statut-defaut">${optionsSelect(v.statuts, "Envoyée", false)}</select>
       </div>
       <div class="champ">
-        <label for="csv-source-fixe">Source (appliquée à toutes les lignes)</label>
+        <label for="csv-source-fixe">${t("branchements.source_fixe")}</label>
         <select id="csv-source-fixe">${optionsSelect(v.sources_candidature, "LinkedIn")}</select>
       </div>
     </div>`;
 
   ouvrirModale(
-    "Importer un CSV",
+    t("branchements.importer_csv_titre"),
     corps,
-    `<button class="btn" onclick="fermerModale()">Annuler</button>
-     <button class="btn btn-accent" id="btn-confirmer-import-csv">Importer</button>`
+    `<button class="btn" onclick="fermerModale()">${t("commun.annuler")}</button>
+     <button class="btn btn-accent" id="btn-confirmer-import-csv">${t("commun.ajouter_simple")}</button>`
   );
 
   document.getElementById("btn-confirmer-import-csv").addEventListener("click", async () => {
@@ -2826,7 +2873,7 @@ function ouvrirCorrespondanceCsv(apercu) {
       if (select.value) correspondance[select.dataset.champ] = select.value;
     });
     if (!correspondance.entreprise || !correspondance.poste) {
-      toast("Associe au moins les colonnes Entreprise et Poste.", true);
+      toast(t("branchements.associer_min_requis"), true);
       return;
     }
     try {
@@ -2841,22 +2888,22 @@ function ouvrirCorrespondanceCsv(apercu) {
         }),
       });
       const rapport = await reponse.json();
-      if (!reponse.ok) throw new Error(rapport.erreur || "Import impossible.");
-      const morceaux = [`<p><strong>${rapport.candidatures_ajoutees}</strong> candidature(s) ajoutée(s).</p>`];
+      if (!reponse.ok) throw new Error(rapport.erreur || t("branchements.import_impossible"));
+      const morceaux = [`<p>${t("branchements.import_csv_resume", { n: rapport.candidatures_ajoutees })}</p>`];
       if (rapport.ignores.length) {
         morceaux.push(
-          `<p><strong>Doublons ignorés</strong> :</p><ul>${rapport.ignores.map((t) => `<li>${echapper(t)}</li>`).join("")}</ul>`
+          `<p><strong>${t("branchements.doublons_ignores")}</strong></p><ul>${rapport.ignores.map((texte) => `<li>${echapper(texte)}</li>`).join("")}</ul>`
         );
       }
       if (rapport.erreurs.length) {
         morceaux.push(
-          `<p><strong>Lignes non importées</strong> :</p><ul>${rapport.erreurs.map((t) => `<li>${echapper(t)}</li>`).join("")}</ul>`
+          `<p><strong>${t("branchements.lignes_non_importees")}</strong></p><ul>${rapport.erreurs.map((texte) => `<li>${echapper(texte)}</li>`).join("")}</ul>`
         );
       }
       ouvrirModale(
-        "Rapport d'import",
+        t("branchements.rapport_import"),
         morceaux.join(""),
-        `<button class="btn btn-accent" onclick="fermerModale()">Fermer</button>`
+        `<button class="btn btn-accent" onclick="fermerModale()">${t("commun.fermer")}</button>`
       );
       rendre();
     } catch (erreur) {
@@ -2873,25 +2920,30 @@ document.addEventListener("click", (evenement) => {
   if (!champ) return;
   const masque = champ.type === "password";
   champ.type = masque ? "text" : "password";
-  bouton.textContent = masque ? "Masquer" : "Afficher";
+  bouton.textContent = masque ? t("commun.masquer") : t("commun.afficher");
 });
 
 // Filet de sécurité : aucune erreur JS ne doit rester silencieuse.
 window.addEventListener("error", () => {
-  toast("Une erreur inattendue est survenue dans l'interface.", true);
+  toast(t("commun.erreur_interface_inattendue"), true);
 });
 window.addEventListener("unhandledrejection", (evenement) => {
-  toast((evenement.reason && evenement.reason.message) || "Erreur inattendue.", true);
+  toast((evenement.reason && evenement.reason.message) || t("commun.erreur_inattendue"), true);
   evenement.preventDefault();
 });
 
 (async function demarrer() {
   try {
     etat.valeurs = await api("/api/valeurs");
-    try { etat.ia = await api("/api/reglages"); } catch { etat.ia = null; }
+    try {
+      etat.ia = await api("/api/reglages");
+      etat.langue = (etat.ia && etat.ia.langue) || "fr";
+    } catch { etat.ia = null; }
+    document.documentElement.lang = etat.langue;
+    traduireStatique();
     await rendre();
   } catch (erreur) {
     document.getElementById("vue").innerHTML =
-      `<div class="etat-vide"><div class="titre">Le serveur ne répond pas</div><p>${echapper(erreur.message)}</p></div>`;
+      `<div class="etat-vide"><div class="titre">${echapper(t("commun.serveur_ne_repond_pas"))}</div><p>${echapper(erreur.message)}</p></div>`;
   }
 })();
