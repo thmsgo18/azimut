@@ -20,6 +20,7 @@ import doublons
 import entreprises
 import entretien
 import export_excel
+import import_csv
 import import_excel
 from exceptions import ErreurSuivi
 
@@ -251,6 +252,26 @@ def construire_analyseur():
     import_xl = actions.add_parser("excel", help="Réimporter un fichier d'export Excel")
     import_xl.add_argument("--fichier", required=True, help="Chemin du fichier .xlsx à importer")
 
+    import_csv_p = actions.add_parser(
+        "csv", help="Importer un export CSV externe (LinkedIn, Indeed, autre)"
+    )
+    import_csv_p.add_argument("--fichier", required=True, help="Chemin du fichier .csv à importer")
+    import_csv_p.add_argument(
+        "--apercu", action="store_true",
+        help="Afficher les en-têtes de colonnes du fichier sans importer",
+    )
+    import_csv_p.add_argument("--col-entreprise", help="En-tête de la colonne entreprise")
+    import_csv_p.add_argument("--col-poste", help="En-tête de la colonne poste / intitulé")
+    import_csv_p.add_argument("--col-statut", help="En-tête de la colonne statut")
+    import_csv_p.add_argument("--col-date-envoi", help="En-tête de la colonne date d'envoi")
+    import_csv_p.add_argument("--col-ville", help="En-tête de la colonne ville")
+    import_csv_p.add_argument("--col-lien-offre", help="En-tête de la colonne lien de l'offre")
+    import_csv_p.add_argument("--source", help="Source appliquée à toutes les lignes (ex. LinkedIn)")
+    import_csv_p.add_argument(
+        "--statut-par-defaut", default="Envoyée",
+        help="Statut appliqué aux lignes sans colonne --col-statut (défaut : Envoyée)",
+    )
+
     # --- entretien ---
     entretien_p = sections.add_parser("entretien", help="Préparer un entretien")
     actions = entretien_p.add_subparsers(dest="action", required=True, metavar="action")
@@ -439,13 +460,46 @@ def executer(args):
         chemin = export_excel.exporter_excel(args.sortie, chemin_db=chemin_db)
         print(f"✓ Export Excel généré : {chemin}")
 
-    elif args.section == "import":
+    elif args.section == "import" and args.action == "excel":
         rapport = import_excel.importer_excel(args.fichier, chemin_db=chemin_db)
         print(
             f"✓ Import terminé : {rapport['candidatures_ajoutees']} candidature(s), "
             f"{rapport['contacts_ajoutes']} contact(s), "
             f"{rapport['entreprises_ajoutees']} entreprise(s) ajoutée(s)."
         )
+        for ligne in rapport["ignores"]:
+            print(f"  · Ignoré (doublon) : {ligne}")
+        for ligne in rapport["erreurs"]:
+            print(f"  ✗ {ligne}")
+
+    elif args.section == "import" and args.action == "csv":
+        if args.apercu:
+            apercu = import_csv.apercu_csv(args.fichier)
+            print("Colonnes détectées :")
+            for entete in apercu["entetes"]:
+                print(f"  · {entete}")
+            return
+        correspondance = {
+            champ: valeur
+            for champ, valeur in {
+                "entreprise": args.col_entreprise,
+                "poste": args.col_poste,
+                "statut": args.col_statut,
+                "date_envoi": args.col_date_envoi,
+                "ville": args.col_ville,
+                "lien_offre": args.col_lien_offre,
+            }.items()
+            if valeur
+        }
+        valeurs_fixes = {}
+        if args.source:
+            valeurs_fixes["source"] = args.source
+        if "statut" not in correspondance:
+            valeurs_fixes["statut"] = args.statut_par_defaut
+        rapport = import_csv.importer_csv(
+            args.fichier, correspondance, valeurs_fixes=valeurs_fixes, chemin_db=chemin_db
+        )
+        print(f"✓ Import terminé : {rapport['candidatures_ajoutees']} candidature(s) ajoutée(s).")
         for ligne in rapport["ignores"]:
             print(f"  · Ignoré (doublon) : {ligne}")
         for ligne in rapport["erreurs"]:

@@ -16,5 +16,8 @@ __pycache__/
 # Exports Excel (données personnelles, régénérables depuis la base)
 *.xlsx
 
+# Fichiers CSV téléversés le temps d'un import (nettoyés automatiquement)
+/import_temp/
+
 # Fichiers macOS
 .DS_Store

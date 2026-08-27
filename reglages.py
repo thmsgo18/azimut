@@ -19,6 +19,8 @@ REGLAGES_CONNUS = {
     "recherche_web": "Oui",             # enrichir le contexte entreprise via recherche web
     "dossier_donnees": None,            # dossier choisi pour documents/ et sauvegardes/
     "dossier_donnees_choisi": "Non",    # évite de redemander à chaque lancement
+    "objectif_hebdomadaire": None,      # nb de candidatures envoyées visé par semaine (None = désactivé)
+    "notifications_macos": "Non",       # notifications proactives (widget) : liens morts, relances
 }
 
 FOURNISSEURS_IA = ["anthropic", "openai_compatible"]
@@ -100,4 +102,6 @@ def etat_reglages(chemin_db=None):
         "recherche_web": obtenir_reglage("recherche_web", chemin_db=chemin_db),
         "dossier_donnees": dossier,
         "dossier_donnees_par_defaut": dossier is None,
+        "objectif_hebdomadaire": obtenir_reglage("objectif_hebdomadaire", chemin_db=chemin_db),
+        "notifications_macos": obtenir_reglage("notifications_macos", chemin_db=chemin_db),
     }

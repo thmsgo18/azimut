@@ -396,6 +396,15 @@ label { font-size: 12.5px; font-weight: 550; color: var(--encre-2); }
 }
 
 .remplissage.vide { background: transparent; min-width: 0; }
+.remplissage.atteint { background: var(--st-accepte); }
+
+/* Courbe hebdomadaire (SVG, une seule teinte, jamais un axe secondaire) */
+.graphique-ligne { width: 100%; height: 140px; display: block; }
+.axe-graphique { stroke: var(--hairline); stroke-width: 1; }
+.aire-graphique { fill: var(--accent); opacity: 0.12; }
+.trait-graphique { fill: none; stroke: var(--accent); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.point-graphique { fill: var(--accent); }
+.etiquette-graphique { fill: var(--encre-3); font-size: 10px; }
 
 .ligne-barre .valeur {
   text-align: right;

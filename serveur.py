@@ -9,7 +9,10 @@ Lancement : ./venv/bin/python serveur.py  puis  http://localhost:8765
 """
 
 import io
+import re
+import secrets
 import tempfile
+import time
 import unicodedata
 from datetime import date
 from pathlib import Path
@@ -25,6 +28,7 @@ import entreprises
 import entretien
 import evenements
 import export_excel
+import import_csv
 import import_excel
 import rapide
 import recherche
@@ -416,7 +420,10 @@ def api_reglages():
 @app.route("/api/reglages", methods=["POST"])
 def api_reglages_modifier():
     donnees = request.get_json(silent=True) or {}
-    for cle in ("cle_api", "fournisseur_ia", "modele_ia", "ia_base_url", "recherche_web"):
+    for cle in (
+        "cle_api", "fournisseur_ia", "modele_ia", "ia_base_url", "recherche_web",
+        "objectif_hebdomadaire", "notifications_macos",
+    ):
         if cle in donnees:
             reglages.definir_reglage(cle, donnees[cle])
     return jsonify(reglages.etat_reglages())
@@ -465,7 +472,10 @@ def api_recherche():
 
 @app.route("/api/stats/avancees")
 def api_stats_avancees():
-    return jsonify(statistiques.stats_avancees())
+    donnees = statistiques.stats_avancees()
+    donnees["serie_hebdomadaire"] = statistiques.serie_hebdomadaire()
+    donnees["objectif_hebdomadaire"] = statistiques.progression_objectif_hebdomadaire()
+    return jsonify(donnees)
 
 
 # --- liens d'offres (détection des offres retirées) ---
@@ -552,6 +562,70 @@ def api_import_excel():
         chemin = Path(dossier) / "import.xlsx"
         fichier.save(chemin)
         rapport = import_excel.importer_excel(chemin)
+    return jsonify(rapport)
+
+
+DOSSIER_IMPORT_TEMP = Path(__file__).parent / "import_temp"
+JETON_RE = re.compile(r"[0-9a-f]{16}")
+
+
+def _nettoyer_import_temp():
+    """Supprime les fichiers CSV temporaires vieux de plus d'une heure —
+    au cas où un aperçu n'a jamais été confirmé."""
+    if not DOSSIER_IMPORT_TEMP.exists():
+        return
+    limite = time.time() - 3600
+    for fichier in DOSSIER_IMPORT_TEMP.glob("*.csv"):
+        try:
+            if fichier.stat().st_mtime < limite:
+                fichier.unlink()
+        except OSError:
+            pass
+
+
+@app.route("/api/import/csv/apercu", methods=["POST"])
+def api_import_csv_apercu():
+    fichier = request.files.get("fichier")
+    if fichier is None or not fichier.filename:
+        raise ValeurNonAutorisee("Aucun fichier reçu — choisir un export CSV (.csv).")
+    DOSSIER_IMPORT_TEMP.mkdir(exist_ok=True)
+    _nettoyer_import_temp()
+    jeton = secrets.token_hex(8)
+    chemin = DOSSIER_IMPORT_TEMP / f"{jeton}.csv"
+    fichier.save(chemin)
+    try:
+        apercu = import_csv.apercu_csv(chemin)
+    except ErreurSuivi:
+        chemin.unlink(missing_ok=True)
+        raise
+    return jsonify({"jeton": jeton, "champs": import_csv.CHAMPS_IMPORTABLES, **apercu})
+
+
+@app.route("/api/import/csv/confirmer", methods=["POST"])
+def api_import_csv_confirmer():
+    donnees = request.get_json(silent=True) or {}
+    jeton = donnees.get("jeton") or ""
+    if not JETON_RE.fullmatch(jeton):
+        raise ValeurNonAutorisee("Jeton d'import manquant ou invalide.")
+    chemin = DOSSIER_IMPORT_TEMP / f"{jeton}.csv"
+    if not chemin.exists():
+        raise ValeurNonAutorisee("Fichier d'import introuvable ou expiré — reteléverser le CSV.")
+    correspondance = {
+        champ: entete
+        for champ, entete in (donnees.get("correspondance") or {}).items()
+        if entete
+    }
+    valeurs_fixes = {}
+    if donnees.get("source"):
+        valeurs_fixes["source"] = donnees["source"]
+    if "statut" not in correspondance:
+        valeurs_fixes["statut"] = donnees.get("statut_par_defaut") or "Envoyée"
+    try:
+        rapport = import_csv.importer_csv(
+            chemin, correspondance, valeurs_fixes=valeurs_fixes
+        )
+    finally:
+        chemin.unlink(missing_ok=True)
     return jsonify(rapport)
 
 

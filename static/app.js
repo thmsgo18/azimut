@@ -1829,9 +1829,45 @@ async function supprimerDocument(idDocument, idCandidature) {
    Statistiques avancées
    ======================================================================== */
 
+function graphiqueHebdomadaire(serie) {
+  const largeur = 600;
+  const hauteur = 140;
+  const marge = { haut: 10, bas: 20, cote: 6 };
+  const zoneH = hauteur - marge.haut - marge.bas;
+  const zoneL = largeur - marge.cote * 2;
+  const maximum = Math.max(1, ...serie.map((s) => s.nombre));
+  const pas = serie.length > 1 ? zoneL / (serie.length - 1) : 0;
+  const points = serie.map((s, i) => ({
+    ...s,
+    x: marge.cote + i * pas,
+    y: marge.haut + zoneH - (s.nombre / maximum) * zoneH,
+  }));
+  const chemin = points.map((p, i) => `${i === 0 ? "M" : "L"}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ");
+  const base = marge.haut + zoneH;
+  const aire = `${chemin} L${points[points.length - 1].x.toFixed(1)},${base} L${points[0].x.toFixed(1)},${base} Z`;
+  const cercles = points
+    .map((p) => `
+      <circle class="point-graphique" cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="3">
+        <title>Semaine du ${dateFr(p.debut)} au ${dateFr(p.fin)} : ${p.nombre} candidature${p.nombre > 1 ? "s" : ""} envoyée${p.nombre > 1 ? "s" : ""}</title>
+      </circle>`)
+    .join("");
+  const premiere = points[0];
+  const derniere = points[points.length - 1];
+  return `
+    <svg viewBox="0 0 ${largeur} ${hauteur}" class="graphique-ligne" preserveAspectRatio="none" role="img" aria-label="Candidatures envoyées par semaine, 12 dernières semaines">
+      <line x1="${marge.cote}" y1="${base}" x2="${largeur - marge.cote}" y2="${base}" class="axe-graphique"/>
+      <path d="${aire}" class="aire-graphique"/>
+      <path d="${chemin}" class="trait-graphique"/>
+      ${cercles}
+      <text x="${premiere.x}" y="${hauteur - 4}" class="etiquette-graphique">${dateFr(premiere.debut)}</text>
+      <text x="${derniere.x}" y="${hauteur - 4}" class="etiquette-graphique" text-anchor="end">${dateFr(derniere.debut)}</text>
+    </svg>`;
+}
+
 async function vueStats() {
   const stats = await api("/api/stats/avancees");
   const liens = await api("/api/liens/etat");
+  const obj = stats.objectif_hebdomadaire;
   if (!stats.total) {
     return `
       <div class="entete-vue"><h1>Statistiques</h1></div>
@@ -1885,6 +1921,21 @@ async function vueStats() {
       </div>
     </div>
     <div class="grille-bord">
+      <div class="carte">
+        <h2>Candidatures envoyées par semaine</h2>
+        ${graphiqueHebdomadaire(stats.serie_hebdomadaire)}
+      </div>
+      <div class="carte">
+        <h2>Objectif hebdomadaire</h2>
+        ${obj ? `
+          <div class="ligne-barre">
+            <span class="libelle">${obj.nombre} / ${obj.objectif} envoyées</span>
+            <div class="piste"><div class="remplissage${obj.atteint ? " atteint" : ""}" style="width:${obj.pourcentage}%"></div></div>
+            <span class="valeur">${obj.pourcentage}%</span>
+          </div>
+          <p class="sous-titre">Semaine du ${dateFr(obj.debut_semaine)} au ${dateFr(obj.fin_semaine)}${obj.atteint ? " — objectif atteint, bravo !" : "."}</p>
+        ` : `<p class="sous-titre">Règle un objectif hebdomadaire dans <a class="lien-detail" href="#/reglages">Réglages</a> pour suivre ta progression ici.</p>`}
+      </div>
       <div class="carte">
         <h2>Entonnoir (taux par rapport aux envoyées)</h2>
         ${entonnoir}
@@ -2118,6 +2169,32 @@ async function vueReglages() {
       </div>
 
       <div class="carte">
+        <h2>Objectif hebdomadaire</h2>
+        <p class="sous-titre">Un nombre de candidatures à envoyer chaque semaine (lundi-dimanche) —
+        la progression s'affiche dans Statistiques. Laisser vide pour désactiver.</p>
+        <div class="champ" style="margin-top:12px; max-width:160px;">
+          <label for="reg-objectif">Candidatures envoyées / semaine</label>
+          <input type="number" id="reg-objectif" min="1" step="1"
+                 value="${echapper(r.objectif_hebdomadaire || "")}" placeholder="ex. 5">
+        </div>
+        <div class="actions-reglages">
+          <button class="btn btn-accent" id="reg-enregistrer-objectif">Enregistrer</button>
+        </div>
+      </div>
+
+      <div class="carte">
+        <h2>Notifications proactives</h2>
+        <p class="sous-titre">Avec <code>Azimut Widget.app</code> ouvert (barre de menus), une
+        notification macOS s'affiche dès qu'un lien d'offre meurt ou qu'une relance devient due —
+        sans avoir besoin d'ouvrir la fenêtre principale. La première fois, macOS demande
+        d'autoriser les notifications pour le widget.</p>
+        <label class="case" style="margin-top:10px;">
+          <input type="checkbox" id="reg-notifications" ${r.notifications_macos === "Oui" ? "checked" : ""}>
+          Activer les notifications proactives
+        </label>
+      </div>
+
+      <div class="carte">
         <h2>Capture rapide depuis Safari</h2>
         <p class="sous-titre">Un Raccourci macOS pour envoyer la page (ou le texte sélectionné) vue
         dans Safari directement vers Azimut, en brouillon à compléter — Azimut doit être ouvert pour
@@ -2269,6 +2346,29 @@ function activerReglages() {
       }
     });
   }
+
+  document.getElementById("reg-enregistrer-objectif").addEventListener("click", async () => {
+    const valeur = document.getElementById("reg-objectif").value.trim();
+    try {
+      await api("/api/reglages", { methode: "POST", corps: { objectif_hebdomadaire: valeur } });
+      toast(valeur ? "Objectif enregistré" : "Objectif désactivé");
+      rendre();
+    } catch (erreur) {
+      toast(erreur.message, true);
+    }
+  });
+
+  document.getElementById("reg-notifications").addEventListener("change", async (evenement) => {
+    try {
+      await api("/api/reglages", {
+        methode: "POST",
+        corps: { notifications_macos: evenement.target.checked ? "Oui" : "Non" },
+      });
+      toast(evenement.target.checked ? "Notifications activées" : "Notifications désactivées");
+    } catch (erreur) {
+      toast(erreur.message, true);
+    }
+  });
 }
 
 /* ========================================================================
@@ -2536,6 +2636,142 @@ document.getElementById("fichier-import").addEventListener("change", async (even
     toast(erreur.message, true);
   }
 });
+
+/* Import CSV générique (LinkedIn, Indeed, ou tout autre export) : deux
+   étapes — un aperçu des colonnes détectées, puis une correspondance
+   colonne -> champ choisie par l'utilisateur avant d'importer. */
+const LIBELLES_CHAMPS_CSV = {
+  entreprise: "Entreprise *",
+  poste: "Poste / intitulé *",
+  statut: "Statut",
+  date_envoi: "Date d'envoi",
+  ville: "Ville",
+  mode_travail: "Mode de travail",
+  lien_offre: "Lien de l'offre",
+  source: "Source",
+  notes: "Notes",
+};
+
+document.getElementById("btn-import-csv").addEventListener("click", () => {
+  document.getElementById("fichier-import-csv").click();
+});
+
+document.getElementById("fichier-import-csv").addEventListener("change", async (evenement) => {
+  const fichier = evenement.target.files[0];
+  evenement.target.value = "";
+  if (!fichier) return;
+  const formulaire = new FormData();
+  formulaire.append("fichier", fichier);
+  try {
+    const reponse = await fetch("/api/import/csv/apercu", { method: "POST", body: formulaire });
+    const apercu = await reponse.json();
+    if (!reponse.ok) throw new Error(apercu.erreur || "Aperçu impossible.");
+    ouvrirCorrespondanceCsv(apercu);
+  } catch (erreur) {
+    toast(erreur.message, true);
+  }
+});
+
+function ouvrirCorrespondanceCsv(apercu) {
+  const v = etat.valeurs;
+  const optionsColonnes = (selection) => `
+    <option value="">— non importé —</option>
+    ${apercu.entetes.map((e) => `<option value="${echapperAttribut(e)}"${e === selection ? " selected" : ""}>${echapper(e)}</option>`).join("")}`;
+
+  // Devine une correspondance de départ par ressemblance de nom, pour éviter
+  // à l'utilisateur de tout choisir à la main sur un export classique.
+  const deviner = (motsClefs) => apercu.entetes.find((e) => {
+    const normalise = e.toLowerCase().replace(/[^a-z]/g, "");
+    return motsClefs.some((mot) => normalise.includes(mot));
+  }) || "";
+  const suggestions = {
+    entreprise: deviner(["company", "entreprise", "employer"]),
+    poste: deviner(["title", "poste", "job", "role", "intitule"]),
+    statut: deviner(["status", "statut", "state"]),
+    date_envoi: deviner(["date", "applied", "envoi"]),
+    ville: deviner(["location", "ville", "city"]),
+    lien_offre: deviner(["url", "link", "lien"]),
+  };
+
+  const lignesApercu = apercu.lignes
+    .map((ligne) => `<tr>${ligne.map((cellule) => `<td class="cellule-secondaire">${echapper(cellule)}</td>`).join("")}</tr>`)
+    .join("");
+
+  const corps = `
+    <p class="sous-titre">Associe chaque champ à une colonne du fichier — les colonnes non associées sont ignorées.</p>
+    <div class="enveloppe-tableau" style="margin-bottom:14px;max-height:160px;">
+      <table class="tableau"><thead><tr>${apercu.entetes.map((e) => `<th>${echapper(e)}</th>`).join("")}</tr></thead>
+      <tbody>${lignesApercu}</tbody></table>
+    </div>
+    <form id="form-correspondance-csv" class="grille-form" onsubmit="return false;">
+      ${apercu.champs.map((champ) => `
+        <div class="champ">
+          <label for="csv-${champ}">${LIBELLES_CHAMPS_CSV[champ] || champ}</label>
+          <select id="csv-${champ}" data-champ="${champ}">${optionsColonnes(suggestions[champ] || "")}</select>
+        </div>`).join("")}
+    </form>
+    <div class="grille-form" style="margin-top:4px;">
+      <div class="champ">
+        <label for="csv-statut-defaut">Statut par défaut (si non associé ci-dessus)</label>
+        <select id="csv-statut-defaut">${optionsSelect(v.statuts, "Envoyée", false)}</select>
+      </div>
+      <div class="champ">
+        <label for="csv-source-fixe">Source (appliquée à toutes les lignes)</label>
+        <select id="csv-source-fixe">${optionsSelect(v.sources_candidature, "LinkedIn")}</select>
+      </div>
+    </div>`;
+
+  ouvrirModale(
+    "Importer un CSV",
+    corps,
+    `<button class="btn" onclick="fermerModale()">Annuler</button>
+     <button class="btn btn-accent" id="btn-confirmer-import-csv">Importer</button>`
+  );
+
+  document.getElementById("btn-confirmer-import-csv").addEventListener("click", async () => {
+    const correspondance = {};
+    document.querySelectorAll("#form-correspondance-csv [data-champ]").forEach((select) => {
+      if (select.value) correspondance[select.dataset.champ] = select.value;
+    });
+    if (!correspondance.entreprise || !correspondance.poste) {
+      toast("Associe au moins les colonnes Entreprise et Poste.", true);
+      return;
+    }
+    try {
+      const reponse = await fetch("/api/import/csv/confirmer", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          jeton: apercu.jeton,
+          correspondance,
+          statut_par_defaut: document.getElementById("csv-statut-defaut").value,
+          source: document.getElementById("csv-source-fixe").value,
+        }),
+      });
+      const rapport = await reponse.json();
+      if (!reponse.ok) throw new Error(rapport.erreur || "Import impossible.");
+      const morceaux = [`<p><strong>${rapport.candidatures_ajoutees}</strong> candidature(s) ajoutée(s).</p>`];
+      if (rapport.ignores.length) {
+        morceaux.push(
+          `<p><strong>Doublons ignorés</strong> :</p><ul>${rapport.ignores.map((t) => `<li>${echapper(t)}</li>`).join("")}</ul>`
+        );
+      }
+      if (rapport.erreurs.length) {
+        morceaux.push(
+          `<p><strong>Lignes non importées</strong> :</p><ul>${rapport.erreurs.map((t) => `<li>${echapper(t)}</li>`).join("")}</ul>`
+        );
+      }
+      ouvrirModale(
+        "Rapport d'import",
+        morceaux.join(""),
+        `<button class="btn btn-accent" onclick="fermerModale()">Fermer</button>`
+      );
+      rendre();
+    } catch (erreur) {
+      toast(erreur.message, true);
+    }
+  });
+}
 
 // Afficher / masquer les mots de passe (délégation : les formulaires sont re-rendus).
 document.addEventListener("click", (evenement) => {
