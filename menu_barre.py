@@ -14,6 +14,7 @@ import rumps
 
 import agenda
 import candidatures
+import notifications_macos
 
 DOSSIER_PROJET = Path(__file__).parent
 ICONE = str(DOSSIER_PROJET / "docs" / "icone_barre_menu.png")
@@ -52,6 +53,7 @@ class WidgetAzimut(rumps.App):
             self.item_entretien.title = ""
             self.title = None
             return
+        notifications_macos.verifier_et_notifier()
         self.item_relances.title = (
             f"Relances à faire : {len(relances)}" if relances else "Aucune relance à faire"
         )
