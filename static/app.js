@@ -698,6 +698,26 @@ function champZone(nom, libelle, valeur = "") {
     </div>`;
 }
 
+function champAffiche(libelle, contenuHTML, pleineLargeur = false) {
+  const vide = contenuHTML === null || contenuHTML === undefined || contenuHTML === "";
+  return `
+    <div class="champ${pleineLargeur ? " pleine-largeur" : ""}">
+      <label>${libelle}</label>
+      <div class="valeur-affichee${vide ? " vide" : ""}">${vide ? "—" : contenuHTML}</div>
+    </div>`;
+}
+
+function champAfficheMotDePasse(nom, libelle, valeur) {
+  return `
+    <div class="champ">
+      <label>${libelle}</label>
+      <div class="champ-mdp">
+        <input type="password" id="champ-${nom}" value="${echapper(valeur ?? "")}" readonly>
+        <button type="button" class="btn btn-discret btn-oeil" data-cible="champ-${nom}">Afficher</button>
+      </div>
+    </div>`;
+}
+
 function lireFormulaire(conteneur) {
   const donnees = {};
   conteneur.querySelectorAll("input[name], select[name], textarea[name]").forEach((champ) => {
@@ -971,10 +991,84 @@ function sectionsCandidature(numero, journal, docs) {
     <div class="journal">${lignesJournal || `<p class="sous-titre">Aucun événement enregistré.</p>`}</div>`;
 }
 
+function contenuFicheCandidature(cand) {
+  const lienOffre = cand.lien_offre
+    ? `<a class="lien-detail" href="${echapper(cand.lien_offre)}" target="_blank" rel="noopener">${echapper(cand.lien_offre)}</a>` +
+      (cand.lien_dernier_etat === "mort" ? ` <span class="puce puce-lien-mort">Lien mort</span>` : "")
+    : null;
+  const portailUrl = cand.portail_url
+    ? `<a class="lien-detail" href="${echapper(cand.portail_url)}" target="_blank" rel="noopener">${echapper(cand.portail_url)}</a>`
+    : null;
+
+  return `
+    <div class="fiche-entete-detail">
+      <div>
+        <h2>${echapper(cand.poste)}</h2>
+        <p class="fiche-soustitre">${echapper(cand.entreprise)}${cand.ville ? " · " + echapper(cand.ville) : ""}</p>
+      </div>
+      ${cand.statut ? `<span class="puce puce-statut" style="--couleur-statut:${COULEURS_STATUT[cand.statut]}"><span class="point"></span>${echapper(cand.statut)}</span>` : ""}
+    </div>
+    <div class="grille-form">
+      ${champAffiche("Priorité", cand.priorite ? echapper(cand.priorite) : null)}
+      ${champAffiche("Sous-domaine", cand.sous_domaine ? echapper(cand.sous_domaine) : null)}
+      ${champAffiche("Type de candidature", cand.type_candidature ? echapper(cand.type_candidature) : null)}
+      ${champAffiche("Source", cand.source ? echapper(cand.source) : null)}
+      ${champAffiche("Envoyée le", dateFr(cand.date_envoi))}
+      ${champAffiche("Relance prévue le", dateFr(cand.date_relance_prevue))}
+      ${champAffiche("Nb de relances", cand.nb_relances || null)}
+      ${champAffiche("Réponse reçue le", dateFr(cand.date_reponse))}
+      ${champAffiche("Entretien le", dateFr(cand.date_entretien))}
+      ${champAffiche("Début souhaité le", dateFr(cand.date_debut_souhaitee))}
+      ${champAffiche("Durée", cand.duree ? echapper(cand.duree) : null)}
+      ${champAffiche("Gratification", cand.gratification ? `${echapper(cand.gratification)} €/mois` : null)}
+      ${champAffiche("Mode de travail", cand.mode_travail ? echapper(cand.mode_travail) : null)}
+      ${champAffiche("Convention envoyée", cand.convention_envoyee ? echapper(cand.convention_envoyee) : null)}
+      ${champAffiche("Lien de l'offre", lienOffre, true)}
+      ${portailUrl ? champAffiche("Portail de candidature", portailUrl, true) : ""}
+      ${cand.portail_identifiant ? champAffiche("Identifiant du portail", echapper(cand.portail_identifiant)) : ""}
+    </div>
+    ${cand.portail_mdp ? champAfficheMotDePasse("mdp-portail-affiche", "Mot de passe du portail", cand.portail_mdp) : ""}
+    ${cand.texte_offre ? `<h3 class="section-panneau">Texte de l'offre</h3><div class="texte-long">${echapper(cand.texte_offre)}</div>` : ""}
+    ${cand.notes ? `<h3 class="section-panneau">Notes</h3><div class="texte-long">${echapper(cand.notes)}</div>` : ""}
+    ${cand.notes_entretien ? `<h3 class="section-panneau">Notes d'entretien</h3><div class="texte-long">${echapper(cand.notes_entretien)}</div>` : ""}`;
+}
+
 async function ouvrirDetailCandidature(numero) {
   try {
     const cand = await api(`/api/candidatures/${numero}`);
-    ouvrirFormCandidature(cand);
+    const [journal, docs] = await Promise.all([
+      api(`/api/candidatures/${numero}/evenements`),
+      api(`/api/documents?candidature=${numero}`),
+    ]);
+    const corps = contenuFicheCandidature(cand) + sectionsCandidature(numero, journal, docs);
+    const pied = `
+      <button class="btn btn-danger" id="btn-supprimer">Supprimer</button>
+      <button class="btn" id="btn-fiche">Fiche entretien</button>
+      <button class="btn" id="btn-mode-entretien">Mode entretien</button>
+      <button class="btn btn-accent" id="btn-modifier">Modifier</button>`;
+    ouvrirPanneau(`${cand.poste} — ${cand.entreprise}`, corps, pied);
+
+    document.getElementById("btn-modifier").addEventListener("click", () => ouvrirFormCandidature(cand));
+    document.getElementById("btn-fiche").addEventListener("click", () => ouvrirFicheEntretien(cand.id));
+    document.getElementById("btn-mode-entretien").addEventListener("click", () => {
+      fermerPanneau();
+      location.hash = `#/entretien/${cand.id}`;
+    });
+    document.getElementById("btn-supprimer").addEventListener("click", async () => {
+      const accord = await confirmer(
+        "Supprimer cette candidature ?",
+        `« ${cand.poste} » chez ${cand.entreprise} sera définitivement supprimée de la base.`
+      );
+      if (!accord) return;
+      try {
+        await api(`/api/candidatures/${numero}`, { methode: "DELETE" });
+        toast("Candidature supprimée");
+        fermerPanneau();
+        rendre();
+      } catch (erreur) {
+        toast(erreur.message, true);
+      }
+    });
   } catch (erreur) {
     toast(erreur.message, true);
   }
@@ -992,7 +1086,7 @@ async function vueEntreprises() {
   const cartes = liste
     .map(
       (ent) => `
-    <div class="carte carte-entreprise" onclick="ouvrirFormEntreprise(${ent.id})">
+    <div class="carte carte-entreprise" onclick="ouvrirDetailEntreprise(${ent.id})">
       <div class="nom">${echapper(ent.nom)}</div>
       ${ent.site_web ? `<a class="site" href="${echapper(ent.site_web)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">${echapper(ent.site_web)}</a>` : ""}
       <div class="contexte">${echapper(ent.contexte_actus || "Pas encore de contexte — ajoute le résultat de tes recherches (actus, missions, équipe).")}</div>
@@ -1141,6 +1235,74 @@ async function ouvrirFormEntreprise(numero = null) {
   }
 }
 
+async function ouvrirDetailEntreprise(numero) {
+  try {
+    const [listeEntreprises, listeContacts, listeCandidatures] = await Promise.all([
+      api("/api/entreprises"),
+      api("/api/contacts"),
+      api("/api/candidatures"),
+    ]);
+    const ent = listeEntreprises.find((e) => e.id === numero);
+    if (!ent) { toast("Entreprise introuvable.", true); return; }
+    const contactsEnt = listeContacts.filter((c) => c.entreprise === ent.nom);
+    const candidaturesEnt = listeCandidatures.filter((c) => c.entreprise === ent.nom);
+
+    const ligneContact = (c) => `
+      <div class="ligne-liee" onclick="ouvrirDetailContact(${c.id})">
+        <span class="cellule-principale">${echapper(c.nom)}${c.poste ? ` <span class="cellule-secondaire">— ${echapper(c.poste)}</span>` : ""}</span>
+        ${c.statut_contact ? `<span class="puce">${echapper(c.statut_contact)}</span>` : ""}
+      </div>`;
+    const ligneCandidature = (c) => `
+      <div class="ligne-liee" onclick="ouvrirDetailCandidature(${c.id})">
+        <span class="cellule-principale">${echapper(c.poste)}</span>
+        <span class="puce puce-statut" style="--couleur-statut:${COULEURS_STATUT[c.statut]}"><span class="point"></span>${echapper(c.statut)}</span>
+      </div>`;
+
+    const corps = `
+      <div class="fiche-entete-detail">
+        <div>
+          <h2>${echapper(ent.nom)}</h2>
+          ${ent.site_web ? `<p class="fiche-soustitre"><a class="lien-detail" href="${echapper(ent.site_web)}" target="_blank" rel="noopener">${echapper(ent.site_web)}</a></p>` : ""}
+        </div>
+      </div>
+      <h3 class="section-panneau">Contexte / actus</h3>
+      ${ent.contexte_actus
+        ? `<div class="texte-long">${echapper(ent.contexte_actus)}</div>`
+        : `<div class="valeur-affichee vide">Pas encore de contexte — ajoute le résultat de tes recherches.</div>`}
+      ${ent.derniere_recherche ? `<p class="cellule-secondaire" style="margin-top:8px;">Dernière recherche le ${dateFr(ent.derniere_recherche)}</p>` : ""}
+
+      <h3 class="section-panneau">Contacts (${contactsEnt.length})</h3>
+      ${contactsEnt.length ? `<div class="liste-liee">${contactsEnt.map(ligneContact).join("")}</div>` : `<p class="sous-titre">Aucun contact pour l'instant.</p>`}
+
+      <h3 class="section-panneau">Candidatures (${candidaturesEnt.length})</h3>
+      ${candidaturesEnt.length ? `<div class="liste-liee">${candidaturesEnt.map(ligneCandidature).join("")}</div>` : `<p class="sous-titre">Aucune candidature pour l'instant.</p>`}`;
+
+    const pied = `
+      <button class="btn btn-danger" id="btn-supprimer">Supprimer</button>
+      <button class="btn btn-accent" id="btn-modifier">Modifier</button>`;
+    ouvrirPanneau(ent.nom, corps, pied);
+
+    document.getElementById("btn-modifier").addEventListener("click", () => ouvrirFormEntreprise(numero));
+    document.getElementById("btn-supprimer").addEventListener("click", async () => {
+      const accord = await confirmer(
+        "Supprimer cette entreprise ?",
+        `« ${ent.nom} » sera supprimée (refusé s'il lui reste des candidatures ou contacts).`
+      );
+      if (!accord) return;
+      try {
+        await api(`/api/entreprises/${numero}`, { methode: "DELETE" });
+        toast("Entreprise supprimée");
+        fermerPanneau();
+        rendre();
+      } catch (erreur) {
+        toast(erreur.message, true);
+      }
+    });
+  } catch (erreur) {
+    toast(erreur.message, true);
+  }
+}
+
 /* ========================================================================
    Contacts
    ======================================================================== */
@@ -1150,7 +1312,7 @@ async function vueContacts() {
   const lignes = liste
     .map(
       (contact) => `
-    <tr onclick="ouvrirFormContact(${contact.id})">
+    <tr onclick="ouvrirDetailContact(${contact.id})">
       <td class="cellule-principale">${echapper(contact.nom)}</td>
       <td>${echapper(contact.entreprise)}</td>
       <td class="cellule-secondaire">${echapper(contact.poste || "")}</td>
@@ -1180,6 +1342,73 @@ async function vueContacts() {
 }
 
 function activerContacts() { /* liens inline */ }
+
+async function ouvrirDetailContact(numero) {
+  try {
+    const [liste, listeEntreprises] = await Promise.all([
+      api("/api/contacts"),
+      api("/api/entreprises"),
+    ]);
+    const contact = liste.find((c) => c.id === numero);
+    if (!contact) { toast("Contact introuvable.", true); return; }
+    const entreprise = listeEntreprises.find((e) => e.nom === contact.entreprise);
+
+    let valeurContact = null;
+    if (contact.valeur_contact) {
+      if (contact.type_contact === "Email") {
+        valeurContact = `<a class="lien-detail" href="mailto:${echapper(contact.valeur_contact)}">${echapper(contact.valeur_contact)}</a>`;
+      } else if (/^https?:\/\//i.test(contact.valeur_contact)) {
+        valeurContact = `<a class="lien-detail" href="${echapper(contact.valeur_contact)}" target="_blank" rel="noopener">${echapper(contact.valeur_contact)}</a>`;
+      } else {
+        valeurContact = echapper(contact.valeur_contact);
+      }
+    }
+    const ligneEntreprise = entreprise
+      ? `<a class="lien-detail" href="#" onclick="event.preventDefault(); ouvrirDetailEntreprise(${entreprise.id})">${echapper(contact.entreprise)}</a>`
+      : echapper(contact.entreprise);
+
+    const corps = `
+      <div class="fiche-entete-detail">
+        <div>
+          <h2>${echapper(contact.nom)}</h2>
+          <p class="fiche-soustitre">${ligneEntreprise}${contact.poste ? " · " + echapper(contact.poste) : ""}</p>
+        </div>
+        ${contact.statut_contact ? `<span class="puce">${echapper(contact.statut_contact)}</span>` : ""}
+      </div>
+      <div class="grille-form">
+        ${champAffiche("Équipe", contact.equipe ? echapper(contact.equipe) : null)}
+        ${champAffiche("Type de contact", contact.type_contact ? echapper(contact.type_contact) : null)}
+        ${champAffiche("Email / lien / téléphone", valeurContact, true)}
+        ${champAffiche("Contacté le", dateFr(contact.date_contact))}
+        ${champAffiche("Trouvé via", contact.source ? echapper(contact.source) : null)}
+      </div>
+      ${contact.notes ? `<h3 class="section-panneau">Notes</h3><div class="texte-long">${echapper(contact.notes)}</div>` : ""}`;
+
+    const pied = `
+      <button class="btn btn-danger" id="btn-supprimer">Supprimer</button>
+      <button class="btn btn-accent" id="btn-modifier">Modifier</button>`;
+    ouvrirPanneau(contact.nom, corps, pied);
+
+    document.getElementById("btn-modifier").addEventListener("click", () => ouvrirFormContact(numero));
+    document.getElementById("btn-supprimer").addEventListener("click", async () => {
+      const accord = await confirmer(
+        "Supprimer ce contact ?",
+        `${contact.nom} (${contact.entreprise}) sera supprimé de la base.`
+      );
+      if (!accord) return;
+      try {
+        await api(`/api/contacts/${numero}`, { methode: "DELETE" });
+        toast("Contact supprimé");
+        fermerPanneau();
+        rendre();
+      } catch (erreur) {
+        toast(erreur.message, true);
+      }
+    });
+  } catch (erreur) {
+    toast(erreur.message, true);
+  }
+}
 
 async function ouvrirFormContact(numero = null) {
   const v = etat.valeurs;
@@ -1743,10 +1972,10 @@ async function vueRecherche() {
         resultatRecherche("candidature", "Candidature", `ouvrirDetailCandidature(${c.id})`,
           `${c.entreprise} — ${c.poste}`, `${c.statut}${c.ville ? " · " + c.ville : ""}`, c)),
       ...resultats.entreprises.map((e) =>
-        resultatRecherche("entreprise", "Entreprise", `ouvrirFormEntreprise(${e.id})`,
+        resultatRecherche("entreprise", "Entreprise", `ouvrirDetailEntreprise(${e.id})`,
           e.nom, e.site_web || "", e)),
       ...resultats.contacts.map((c) =>
-        resultatRecherche("contact", "Contact", `ouvrirFormContact(${c.id})`,
+        resultatRecherche("contact", "Contact", `ouvrirDetailContact(${c.id})`,
           c.nom, `${c.entreprise}${c.poste ? " · " + c.poste : ""}`, c)),
     ];
     corps = rendus.length
