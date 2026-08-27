@@ -2224,6 +2224,31 @@ async function vueReglages() {
       </div>
 
       <div class="carte">
+        <h2>Vue compagnon (iPhone / iPad)</h2>
+        <p class="sous-titre">Une page en lecture seule (relances du jour, prochain entretien,
+        liste des candidatures) accessible depuis ton téléphone, <strong>sur le même réseau
+        Wi-Fi que ce Mac</strong> — sans app à installer, sans compte, sans cloud. Aucun mot de
+        passe de portail ni clé API n'y transite jamais. Protégée par un code d'accès ; à
+        activer une fois puis <strong>relancer Azimut</strong> pour que ça prenne effet.</p>
+        <label class="case" style="margin-top:10px;">
+          <input type="checkbox" id="reg-compagnon-actif" ${r.compagnon_actif === "Oui" ? "checked" : ""}>
+          Activer la vue compagnon
+        </label>
+        ${r.compagnon_actif === "Oui" ? `
+          <div class="champ" style="margin-top:12px;">
+            <label>Adresse à ouvrir sur le téléphone</label>
+            <input type="text" readonly value="http://${echapper(r.compagnon_ip)}:${r.compagnon_port}">
+          </div>
+          <div class="champ" style="margin-top:10px; max-width:220px;">
+            <label>Code d'accès</label>
+            <input type="text" readonly value="${echapper(r.compagnon_code || "")}">
+          </div>
+          <div class="actions-reglages">
+            <button class="btn" id="reg-regenerer-code">Régénérer le code</button>
+          </div>` : ""}
+      </div>
+
+      <div class="carte">
         <h2>Capture rapide depuis Safari</h2>
         <p class="sous-titre">Un Raccourci macOS pour envoyer la page (ou le texte sélectionné) vue
         dans Safari directement vers Azimut, en brouillon à compléter — Azimut doit être ouvert pour
@@ -2386,6 +2411,38 @@ function activerReglages() {
       toast(erreur.message, true);
     }
   });
+
+  document.getElementById("reg-compagnon-actif").addEventListener("change", async (evenement) => {
+    try {
+      await api("/api/reglages/compagnon", { methode: "POST", corps: { actif: evenement.target.checked } });
+      toast(
+        evenement.target.checked
+          ? "Vue compagnon activée — relance Azimut pour qu'elle démarre"
+          : "Vue compagnon désactivée — relance Azimut pour l'arrêter"
+      );
+      rendre();
+    } catch (erreur) {
+      toast(erreur.message, true);
+    }
+  });
+
+  const boutonRegenererCode = document.getElementById("reg-regenerer-code");
+  if (boutonRegenererCode) {
+    boutonRegenererCode.addEventListener("click", async () => {
+      const accord = await confirmer(
+        "Régénérer le code d'accès ?",
+        "L'ancien code cessera de fonctionner immédiatement — les appareils déjà connectés devront ressaisir le nouveau."
+      );
+      if (!accord) return;
+      try {
+        await api("/api/reglages/compagnon", { methode: "POST", corps: { regenerer_code: true } });
+        toast("Nouveau code généré");
+        rendre();
+      } catch (erreur) {
+        toast(erreur.message, true);
+      }
+    });
+  }
 
   document.getElementById("reg-notifications").addEventListener("change", async (evenement) => {
     try {

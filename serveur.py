@@ -414,7 +414,15 @@ def api_document_supprimer(numero):
 
 @app.route("/api/reglages")
 def api_reglages():
-    return jsonify(reglages.etat_reglages())
+    import compagnon
+
+    return jsonify(
+        {
+            **reglages.etat_reglages(),
+            "compagnon_port": compagnon.PORT_COMPAGNON,
+            "compagnon_ip": compagnon.ip_locale(),
+        }
+    )
 
 
 @app.route("/api/reglages", methods=["POST"])
@@ -427,6 +435,28 @@ def api_reglages_modifier():
         if cle in donnees:
             reglages.definir_reglage(cle, donnees[cle])
     return jsonify(reglages.etat_reglages())
+
+
+@app.route("/api/reglages/compagnon", methods=["POST"])
+def api_compagnon_reglages():
+    """Active/désactive la vue compagnon et/ou régénère son code d'accès.
+    Le second serveur (compagnon.py) n'est démarré/arrêté qu'au prochain
+    lancement d'Azimut — comme le dossier de données, un réglage structurel
+    n'a pas besoin de prendre effet à chaud."""
+    import compagnon
+
+    donnees = request.get_json(silent=True) or {}
+    if "actif" in donnees:
+        reglages.definir_reglage("compagnon_actif", "Oui" if donnees["actif"] else "Non")
+    if donnees.get("regenerer_code"):
+        reglages.code_compagnon(regenerer=True)
+    return jsonify(
+        {
+            **reglages.etat_reglages(),
+            "compagnon_port": compagnon.PORT_COMPAGNON,
+            "compagnon_ip": compagnon.ip_locale(),
+        }
+    )
 
 
 @app.route("/api/reglages/dossier_donnees", methods=["POST"])

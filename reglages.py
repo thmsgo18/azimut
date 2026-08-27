@@ -5,6 +5,7 @@ quittent jamais la machine (jamais exportés, jamais dans les zips de partage,
 masqués dans l'interface et dans les réponses de l'API).
 """
 
+import secrets
 from pathlib import Path
 
 import db
@@ -21,6 +22,8 @@ REGLAGES_CONNUS = {
     "dossier_donnees_choisi": "Non",    # évite de redemander à chaque lancement
     "objectif_hebdomadaire": None,      # nb de candidatures envoyées visé par semaine (None = désactivé)
     "notifications_macos": "Non",       # notifications proactives (widget) : liens morts, relances
+    "compagnon_actif": "Non",           # vue compagnon iPhone/iPad (lecture seule, réseau local)
+    "compagnon_code": None,             # code d'accès à la vue compagnon (régénérable)
 }
 
 FOURNISSEURS_IA = ["anthropic", "openai_compatible"]
@@ -89,6 +92,16 @@ def definir_dossier_donnees(chemin, chemin_db=None):
     return str(dossier)
 
 
+def code_compagnon(chemin_db=None, regenerer=False):
+    """Code d'accès à la vue compagnon (lecture seule, réseau local) — généré
+    une seule fois puis stable, à moins de forcer une régénération."""
+    code = None if regenerer else obtenir_reglage("compagnon_code", chemin_db=chemin_db)
+    if not code:
+        code = secrets.token_urlsafe(6)
+        definir_reglage("compagnon_code", code, chemin_db=chemin_db)
+    return code
+
+
 def etat_reglages(chemin_db=None):
     """État des réglages pour l'interface — la clé API n'apparaît que masquée."""
     cle_api = obtenir_reglage("cle_api", chemin_db=chemin_db)
@@ -104,4 +117,10 @@ def etat_reglages(chemin_db=None):
         "dossier_donnees_par_defaut": dossier is None,
         "objectif_hebdomadaire": obtenir_reglage("objectif_hebdomadaire", chemin_db=chemin_db),
         "notifications_macos": obtenir_reglage("notifications_macos", chemin_db=chemin_db),
+        "compagnon_actif": obtenir_reglage("compagnon_actif", chemin_db=chemin_db),
+        "compagnon_code": (
+            code_compagnon(chemin_db=chemin_db)
+            if obtenir_reglage("compagnon_actif", chemin_db=chemin_db) == "Oui"
+            else None
+        ),
     }

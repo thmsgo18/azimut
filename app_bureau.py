@@ -99,6 +99,25 @@ class ApiBureau:
         return reglages.definir_dossier_donnees(resultat[0])
 
 
+def _demarrer_compagnon_si_active():
+    """Vue compagnon (lecture seule, iPhone/iPad) : un second serveur Flask,
+    séparé du principal, écoutant sur toutes les interfaces réseau (pas
+    seulement 127.0.0.1) — uniquement si activée dans Réglages. Le serveur
+    principal, lui, n'écoute jamais que sur 127.0.0.1."""
+    import reglages
+
+    if reglages.obtenir_reglage("compagnon_actif") != "Oui":
+        return
+    import compagnon
+
+    threading.Thread(
+        target=lambda: compagnon.app_compagnon.run(
+            host="0.0.0.0", port=compagnon.PORT_COMPAGNON, debug=False, use_reloader=False
+        ),
+        daemon=True,
+    ).start()
+
+
 def _verification_liens_en_arriere_plan():
     """Vérifie périodiquement les liens d'offres tant qu'Azimut est ouvert
     (toutes les 6h) — best effort : une erreur réseau ne doit jamais faire
@@ -146,6 +165,7 @@ def principal():
     serveur_thread.start()
     _attendre_serveur(url)
     threading.Thread(target=_verification_liens_en_arriere_plan, daemon=True).start()
+    _demarrer_compagnon_si_active()
 
     _habiller_application_macos()
     # Autorise les téléchargements (export Excel, fiche .md) depuis la fenêtre.
