@@ -97,6 +97,8 @@ A spreadsheet can track a handful of applications for a while. It stops working 
 - **Comparator**: check several applications in list view to line them up side by side (stipend, duration, work mode, dates…) to decide between multiple ongoing offers.
 - **Dead job-link detection**: a conservative HTTP check (run automatically every 6h while Azimut is open, or on demand) flags withdrawn postings (404/410) — often a sign a role has been filled — with no false positives on a mere network hiccup.
 - **Quick capture from Safari**: a macOS Shortcut sends the page (or selected text) to Azimut, which creates a draft to complete.
+- **CSV import** from a LinkedIn/Indeed export, or any other spreadsheet turned into CSV: pick which column maps to which field (no fixed format to break when a provider changes its export), duplicates skipped and reported like every other import.
+- **AI follow-up drafts**: from a sent or already-followed-up application, generate a short, personalized follow-up email (object + body) from the known facts — never invented, never sent automatically, just a draft to copy.
 
 **Organization**
 - **Companies** with context and news notes; detects probable duplicates ("Mistral" / "Mistral AI") and **merges them in one click**.
@@ -107,9 +109,11 @@ A spreadsheet can track a handful of applications for a while. It stops working 
 
 **Insights**
 - **Dashboard**: counts, breakdown by status and sub-domain, follow-ups due, upcoming interviews.
-- **Advanced statistics**: sent → replies → interviews → accepted funnel, average delays, response rate by source.
+- **Advanced statistics**: sent → replies → interviews → accepted funnel, average delays, response rate by source, and a **weekly chart** (applications sent per week, last 12 weeks) instead of numbers alone.
+- **Weekly goal**: set a target number of applications per week in Réglages, see the progress bar in Statistiques.
 - **Calendar** (month or 2-week view) connectable to a real calendar: a live `webcal://` subscription for Calendar (Mac), a "Add to Google Calendar" button per deadline, a universal `.ics` file, and every deadline can also become a dated reminder in the **Reminders** app (macOS), one at a time or all at once.
-- **Menu bar widget** (optional, `Azimut Widget.app`): today's follow-ups and the next interview at a glance, no need to open the window.
+- **Menu bar widget** (optional, `Azimut Widget.app`): today's follow-ups and the next interview at a glance, no need to open the window — can also fire **proactive macOS notifications** (a daily follow-ups digest, an alert the first time a job link dies), opt-in in Réglages.
+- **Companion view for iPhone/iPad**: an opt-in, read-only mobile page (today's follow-ups, next interview, the full list) reachable from your phone on the same Wi-Fi as the Mac, protected by a locally-generated access code — see [macOS automations](#macos-automations).
 
 **Data & privacy**
 - **Excel export / import**: a readable backup and restore, duplicates ignored and never overwritten, a detailed report after import.
@@ -131,15 +135,10 @@ A short walkthrough of the everyday flow:
 
 ## Improvement ideas
 
-Ideas not implemented yet, roughly in order of how much they'd change day-to-day use:
+Ideas not implemented yet:
 
-- **Visual charts in Statistiques** — the funnel and breakdowns are numbers today; an actual line chart (applications over time) or funnel graphic would read faster.
-- **Follow-up message drafts** — generate a short, personalized follow-up email draft (optionally via the AI assistant) straight from an application's sheet, ready to copy.
-- **Weekly goals** — a simple counter ("5 applications this week") with a visible progress indicator, to keep momentum during a search.
-- **Proactive macOS notifications** — a Notification Center alert when a link dies or right before a follow-up is due, without needing the window or even the menu bar widget open.
 - **Secrets in the macOS Keychain** — portal passwords and the AI API key currently sit in cleartext in the local database (by design, documented in `CLAUDE.md`); moving them to Keychain would remove that cleartext exposure entirely.
-- **A companion view for iPhone/iPad** — even read-only, to check today's follow-ups or an interview time without a Mac nearby (would need a sync story for the SQLite file, e.g. via iCloud Drive with a write lock).
-- **CSV import from LinkedIn/Indeed exports** — a bulk starting point when moving from a job board's own tracking to Azimut.
+- **Two-way sync for the companion view** — it's read-only today; marking a follow-up done from the phone would need a small, carefully-scoped write path (and to stay safe on an open Wi-Fi network).
 
 Have another idea, or want one of these built? Open an issue.
 
@@ -196,6 +195,16 @@ python cli.py contacts lister --entreprise "AgentikCo"
 python cli.py contacts modifier 5 --statut Contacté --date-contact 27/08/2026
 ```
 
+### CSV import (LinkedIn, Indeed, or anything else)
+
+```bash
+python cli.py import csv --fichier offres.csv --apercu   # lists the column headers found
+python cli.py import csv --fichier offres.csv \
+  --col-entreprise "Company Name" --col-poste "Job Title" --source LinkedIn
+```
+
+No fixed format is assumed — a job board's export schema isn't stable, so each column is mapped by hand (`--col-entreprise`, `--col-poste`, `--col-statut`, `--col-date-envoi`, `--col-ville`, `--col-lien-offre`) instead of guessed. `--source` and `--statut-par-defaut` (default `Envoyée`) apply to every row that doesn't have its own mapped column. Same duplicate handling as every other import. The web UI (Réglages → "Importer un CSV") offers the same thing with a visual column-mapping screen and a live preview.
+
 ### Excel export / import
 
 ```bash
@@ -246,6 +255,10 @@ This layer only proposes — never a direct database write, never a made-up valu
 **Quick capture (Safari Shortcut).** See the "Quick capture from Safari" card in Réglages to build the 4-step macOS Shortcut that sends the page or selected text to Azimut. The application created is a draft (status "À préparer", an origin note) to review and complete — never a fully-filled application without a pass through the interface. Azimut must be open to receive it (it's a call to its local server).
 
 **Menu bar widget.** Double-click `Azimut Widget.app`: an icon in the menu bar (not the Dock) shows today's follow-up count and the next interview, with a shortcut to open the full app. Reads the database directly, works even if the main window is closed. Can be added to Login Items (System Settings → General → Login Items) to start automatically.
+
+**Proactive notifications.** With the widget running, turn on "Notifications proactives" in Réglages: a macOS notification fires once a day if any follow-up is due, and once per application the first time its job link is detected dead — deliberately not chatty, no repeat alerts for the same thing.
+
+**Companion view (iPhone/iPad).** Turn on "Vue compagnon" in Réglages, then relaunch Azimut: a second, separate mini-server starts, listening on your local network (not just the Mac itself) on its own port, serving a small **read-only** mobile page — today's follow-ups, the next interview, the full application list. It never exposes portal passwords, the AI key, or any write route, and it's protected by an access code shown (and regenerable) in Réglages. Open `http://<the-IP-shown-in-Réglages>:8767` in Safari on your phone, on the **same Wi-Fi** as the Mac — nothing goes through the internet or a cloud service.
 
 ## Rules enforced by the code (not just documented)
 
@@ -322,7 +335,9 @@ azimut/
   Azimut (terminal).command         # fallback: same window, from the Terminal
   Créer un zip à partager.command   # double-click: a zip (no personal data) on the Desktop
   app_bureau.py     # native window (pywebview) wrapping the internal server
-  menu_barre.py     # menu bar widget (rumps): follow-ups, next interview
+  menu_barre.py     # menu bar widget (rumps): follow-ups, next interview, notifications
+  notifications_macos.py  # proactive macOS notifications (dead links, follow-ups due)
+  compagnon.py      # read-only companion server for iPhone/iPad (local network, opt-in)
   serveur.py        # internal server (Flask): JSON API + interface
   static/           # interface (index.html, style.css, app.js)
   db.py             # SQLite connection, table creation, migrations
@@ -337,19 +352,21 @@ azimut/
   rapide.py         # quick capture (draft from a macOS Shortcut)
   export_excel.py   # .xlsx export (4 sheets, matches the original file's style)
   import_excel.py   # import of such an export (backup / restore)
+  import_csv.py     # generic CSV import (LinkedIn, Indeed…), column mapping by hand
   evenements.py     # automatic application timeline
   documents.py      # attached files (configurable folder)
   recherche.py      # multi-type global search
-  statistiques.py   # funnel, delays, sources
+  statistiques.py   # funnel, delays, sources, weekly chart, weekly goal
   agenda.py         # deadlines + iCalendar export (.ics)
-  reglages.py       # local settings (masked API key, AI provider, data folder)
+  reglages.py       # local settings (masked API key, AI provider, data folder, companion code)
   sauvegarde.py      # dated copies of the database, rotation
-  agent.py          # posting analysis — Anthropic or any OpenAI-compatible provider
+  agent.py          # posting analysis + follow-up drafts — Anthropic or any OpenAI-compatible provider
   entretien.py      # interview prep sheet (Markdown)
   cli.py            # command-line interface
   CLAUDE.md         # how the project works, for AIs (Claude Code…)
   suivi             # terminal executable (equivalent of python cli.py)
-  tests/            # 202 tests — python -m unittest discover -s tests
+  .github/workflows/tests.yml  # CI: runs the test suite on every push
+  tests/            # 247 tests — python -m unittest discover -s tests
   suivi_candidatures.db   # the database — sole source of truth (not versioned)
 ```
 

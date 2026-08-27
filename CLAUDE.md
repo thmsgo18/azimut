@@ -119,6 +119,24 @@ creer_brouillon(lien=None, texte=None) -> {id, entreprise, poste}   # statut "À
 creer_rappel(titre, notes, date_echeance_iso, liste="Azimut")
 pousser_echeance(echeance) / pousser_toutes_les_echeances() -> résumé (best effort)
 
+# notifications_macos.py — notifications proactives (widget), désactivées par défaut
+verifier_et_notifier()   # résumé de relances 1x/jour + 1 alerte par lien mort, jamais en boucle
+
+# import_csv.py — import générique (LinkedIn, Indeed, autre), colonnes mappées à la main
+apercu_csv(chemin_fichier) -> {"entetes", "lignes"}          # sans rien écrire en base
+importer_csv(chemin_fichier, correspondance, valeurs_fixes=None) -> résumé  # correspondance = {champ: en-tête}
+
+# statistiques.py — funnel, délais, sources, + activité hebdomadaire
+serie_hebdomadaire(nb_semaines=12) -> [{debut, fin, nombre}, ...]     # candidatures envoyées / semaine ISO
+progression_objectif_hebdomadaire() -> dict | None                    # None si reglages.objectif_hebdomadaire absent
+
+# agent.py — en plus de l'analyse d'offres (voir plus bas)
+generer_message_relance(candidature, contact=None) -> texte   # objet + corps, jamais envoyé automatiquement
+
+# compagnon.py — serveur séparé, lecture seule, réseau local (port 8767), opt-in (reglages.compagnon_actif)
+# Aucune fonction à appeler depuis un autre module : sert sa propre API + page mobile, protégée par
+# reglages.code_compagnon(). Ne jamais y ajouter de route d'écriture ni de champ sensible.
+
 # contacts.py
 verifier_doublon_contact(entreprise_nom, nom_contact) -> id | None
 ajouter_contact(entreprise_nom, nom, **champs) -> id
