@@ -1041,8 +1041,11 @@ async function ouvrirDetailCandidature(numero) {
       api(`/api/documents?candidature=${numero}`),
     ]);
     const corps = contenuFicheCandidature(cand) + sectionsCandidature(numero, journal, docs);
+    const peutRelancerIA = etat.ia && etat.ia.cle_api_definie
+      && ["Envoyée", "Relancée"].includes(cand.statut);
     const pied = `
       <button class="btn btn-danger" id="btn-supprimer">Supprimer</button>
+      ${peutRelancerIA ? `<button class="btn" id="btn-brouillon-relance">Brouillon de relance</button>` : ""}
       <button class="btn" id="btn-fiche">Fiche entretien</button>
       <button class="btn" id="btn-mode-entretien">Mode entretien</button>
       <button class="btn btn-accent" id="btn-modifier">Modifier</button>`;
@@ -1054,6 +1057,32 @@ async function ouvrirDetailCandidature(numero) {
       fermerPanneau();
       location.hash = `#/entretien/${cand.id}`;
     });
+    const boutonRelance = document.getElementById("btn-brouillon-relance");
+    if (boutonRelance) {
+      boutonRelance.addEventListener("click", async () => {
+        boutonRelance.disabled = true;
+        boutonRelance.textContent = "Génération…";
+        try {
+          const resultat = await api(`/api/agent/relance/${numero}`, { methode: "POST", corps: {} });
+          ouvrirModale(
+            "Brouillon de relance",
+            `<p class="sous-titre">À relire avant d'envoyer — rien n'est envoyé automatiquement.</p>
+             <textarea id="texte-brouillon-relance" style="min-height:220px;" readonly>${echapper(resultat.texte)}</textarea>`,
+            `<button class="btn" onclick="fermerModale()">Fermer</button>
+             <button class="btn btn-accent" id="btn-copier-relance">Copier</button>`
+          );
+          document.getElementById("btn-copier-relance").addEventListener("click", async () => {
+            await navigator.clipboard.writeText(document.getElementById("texte-brouillon-relance").value);
+            toast("Message copié");
+          });
+        } catch (erreur) {
+          toast(erreur.message, true);
+        } finally {
+          boutonRelance.disabled = false;
+          boutonRelance.textContent = "Brouillon de relance";
+        }
+      });
+    }
     document.getElementById("btn-supprimer").addEventListener("click", async () => {
       const accord = await confirmer(
         "Supprimer cette candidature ?",

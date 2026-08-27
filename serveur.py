@@ -463,6 +463,19 @@ def api_agent_analyser():
     return jsonify(proposition)
 
 
+@app.route("/api/agent/relance/<int:numero>", methods=["POST"])
+def api_agent_relance(numero):
+    import agent
+
+    candidature = candidatures.recuperer_candidature(numero)
+    contact = None
+    liste_contacts = contacts.lister_contacts(entreprise_nom=candidature["entreprise"])
+    if liste_contacts:
+        contact = liste_contacts[0]
+    texte = agent.generer_message_relance(candidature, contact=contact)
+    return jsonify({"texte": texte})
+
+
 # --- recherche, statistiques, agenda, sauvegarde ---
 
 @app.route("/api/recherche")
