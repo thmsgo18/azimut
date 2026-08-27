@@ -1,145 +1,151 @@
+<p align="right"><b>English</b> | <a href="./README.fr.md">Français</a></p>
+
 <div align="center">
-  <img src="docs/logo.png" width="120" alt="Logo Azimut" />
+  <img src="docs/logo.png" width="120" alt="Azimut logo" />
 
-  # Azimut
+  <h1>Azimut</h1>
 
-  **Suivi de candidatures de stage — application de bureau locale, 100 % en français.**
+  <p><b>Track every internship application in a real local database, behind a native macOS app — not another spreadsheet.</b></p>
 
-  ![Plateforme](https://img.shields.io/badge/plateforme-macOS-3d8ff0)
-  ![Python](https://img.shields.io/badge/python-3.10%2B-3d8ff0)
-  ![Licence](https://img.shields.io/badge/licence-MIT-3d8ff0)
-  ![Tests](https://img.shields.io/badge/tests-202%20passent-3d8ff0)
+  <p>
+    <a href="https://github.com/thmsgo18/azimut/actions/workflows/tests.yml"><img src="https://img.shields.io/github/actions/workflow/status/thmsgo18/azimut/tests.yml?style=for-the-badge&label=tests" alt="Tests"></a>
+    <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-22c55e?style=for-the-badge" alt="License MIT"></a>
+    <img src="https://img.shields.io/badge/platform-macOS-3d8ff0?style=for-the-badge" alt="Platform macOS">
+    <img src="https://img.shields.io/badge/python-3.10%2B-f59e0b?style=for-the-badge" alt="Python 3.10+">
+  </p>
 
+  <p>
+    <a href="#install">Install</a> •
+    <a href="#why-not-a-spreadsheet">Why not a spreadsheet</a> •
+    <a href="#features">Features</a> •
+    <a href="#getting-started">Getting started</a> •
+    <a href="#improvement-ideas">Improvement ideas</a> •
+    <a href="#the-command-line">CLI</a> •
+    <a href="#ai-assistant--any-provider">AI assistant</a> •
+    <a href="#macos-automations">macOS automations</a>
+  </p>
 </div>
 
 ---
 
-Azimut centralise toute une recherche de stage — candidatures, entreprises,
-contacts, documents, entretiens — dans une vraie base de données locale,
-derrière une interface soignée qui s'ouvre comme n'importe quelle application
-Mac. Pensé au départ pour un M2 en systèmes agentiques, il ne fait aucune
-hypothèse sur le domaine : il convient à n'importe quelle recherche de stage
-ou d'alternance.
+Azimut centralizes an entire internship search — applications, companies, contacts, documents, interviews — in a real local database, behind a polished interface that opens like any other Mac app. Built for an AI/ML master's student, it makes no assumption about the field: it fits any internship or apprenticeship search.
 
-**Principe directeur : la base de données (`suivi_candidatures.db`) est la
-seule source de vérité.** Toute écriture — depuis l'interface, la ligne de
-commande, ou une IA — passe par des fonctions Python qui valident les valeurs
-et détectent les doublons. Jamais de SQL écrit à la main. Les exports Excel ne
-sont que des projections de cette base, régénérables à tout moment.
+**Guiding principle: the database (`suivi_candidatures.db`) is the single source of truth.** Every write — from the interface, the command line, or an AI — goes through Python functions that validate values and catch duplicates. Never hand-written SQL. Excel exports are just projections of that database, regenerable at any time.
 
-Tout tourne en local. Aucune donnée ne quitte la machine, sauf action
-explicite (export, appel à un assistant IA si tu actives cette fonction).
+Everything runs locally. No data ever leaves the machine, except by explicit action (export, or a call to an AI assistant if you turn that feature on).
 
-## Sommaire
+## Install
 
-- [Fonctionnalités](#fonctionnalités)
-- [Installation](#installation)
-- [Partager l'appli à un ami](#partager-lappli-à-un-ami)
-- [La ligne de commande](#la-ligne-de-commande)
-- [Assistant IA — n'importe quel fournisseur](#assistant-ia--nimporte-quel-fournisseur)
-- [Automatisations macOS](#automatisations-macos)
-- [Règles appliquées par le code](#règles-appliquées-par-le-code-pas-seulement-documentées)
-- [API pour une IA (Claude Code ou autre)](#api-pour-une-ia-claude-code-ou-autre)
-- [Structure du projet](#structure-du-projet)
-- [Tests](#tests)
-- [Licence](#licence)
+Azimut is built for macOS.
 
-## Fonctionnalités
-
-**Suivi des candidatures**
-- Pipeline **kanban** (glisser-déposer pour changer le statut) ou liste
-  filtrable, avec panneau latéral d'ajout/édition/suppression.
-- **Journal automatique** par candidature : création, changement de statut,
-  relance, réponse, entretien planifié — horodaté sans rien faire.
-- **Documents joints** : CV, lettre de motivation, offre en PDF ou tout autre
-  fichier, attachables dès la création ou depuis la fiche, plusieurs à la fois.
-- **Fiche d'entretien** et **mode entretien** (la fiche à gauche, une zone de
-  notes à droite, sauvegardée automatiquement dans la candidature).
-- **Accès aux portails de recrutement** : URL, identifiant et mot de passe par
-  candidature (masqué dans l'interface, jamais exporté).
-- **Relances** : une vue dédiée liste, des plus urgentes aux plus récentes,
-  toutes les candidatures à relancer aujourd'hui ou en retard — un bouton
-  « Relancé » enregistre le geste en un clic (compteur, statut, journal).
-- **Comparateur** : coche plusieurs candidatures en vue liste pour les mettre
-  côte à côte (gratification, durée, mode de travail, dates…) et arbitrer
-  entre plusieurs propositions en cours.
-- **Détection des liens d'offres morts** : un ping HTTP conservateur (relancé
-  automatiquement toutes les 6h pendant qu'Azimut tourne, ou à la demande)
-  signale les offres retirées (404/410) — souvent le signe qu'un poste est
-  pourvu — sans jamais de faux positif sur une simple panne réseau.
-- **Capture rapide depuis Safari** : un Raccourci macOS envoie la page (ou le
-  texte sélectionné) vers Azimut, qui crée un brouillon à compléter.
-
-**Organisation**
-- **Entreprises** avec contexte et actualités ; détection des doublons
-  probables (« Mistral » / « Mistral AI ») et **fusion en un clic**.
-- **Contacts** avec statut de prise de contact.
-- **Recherche globale** (raccourci <kbd>⌘K</kbd>) qui fouille tout — postes,
-  notes, textes d'offres, contacts — avec un code couleur par type de résultat.
-- **Détection de quasi-doublons** à la création d'une candidature (intitulé
-  proche, ou même lien d'offre une fois débarrassé du tracking) : un simple
-  avertissement, jamais un blocage.
-
-**Pilotage**
-- **Tableau de bord** : compteurs, répartition par statut et sous-domaine,
-  relances à faire, entretiens à venir.
-- **Statistiques avancées** : entonnoir envoyées → réponses → entretiens →
-  acceptées, délais moyens, taux de réponse par source.
-- **Agenda** (vue mois ou 2 semaines) connectable à un vrai calendrier :
-  abonnement `webcal://` en direct pour Calendrier (Mac), bouton
-  « Ajouter à Google Agenda » par échéance, fichier `.ics` universel, et
-  chaque échéance peut aussi devenir un rappel daté dans l'app **Rappels**
-  (macOS), une par une ou toutes d'un coup.
-- **Widget de barre de menus** (optionnel, `Azimut Widget.app`) : relances du
-  jour et prochain entretien d'un coup d'œil, sans ouvrir la fenêtre.
-
-**Données et vie privée**
-- **Export / import Excel** : sauvegarde lisible et restauration, doublons
-  ignorés et jamais écrasés, rapport détaillé après import.
-- **Sauvegarde automatique** de la base à chaque lancement (rotation sur 10).
-- **Dossier de données configurable** : choisis où ranger documents et
-  sauvegardes (utile pour les faire suivre par iCloud Drive ou Dropbox) —
-  visible et mis à jour dans le Finder en temps réel, comme n'importe quel
-  autre dossier.
-- **Assistant IA optionnel**, avec la clé de n'importe quel fournisseur — voir
-  plus bas.
-
-## Installation
-
-Azimut est fait pour macOS. Cloner ce dépôt, puis double-cliquer sur
-**`Azimut.app`** : l'appli s'ouvre dans sa propre fenêtre. Au tout premier
-lancement, l'environnement Python et les dépendances s'installent seuls
-(connexion Internet nécessaire une seule fois) — ce premier démarrage peut
-prendre une à deux minutes, les suivants sont immédiats. Fermer la fenêtre
-quitte l'appli.
+**Option A — clone with git** (recommended if you're comfortable with a terminal, makes future updates a `git pull` away):
 
 ```bash
 git clone https://github.com/thmsgo18/azimut.git
 open azimut/Azimut.app
 ```
 
-Si macOS bloque l'ouverture au premier lancement : clic droit sur `Azimut.app`
-→ *Ouvrir* (une seule fois). En secours, `Azimut (terminal).command` lance la
-même fenêtre depuis le Terminal avec les messages d'installation visibles.
+**Option B — download the ZIP, no terminal needed:**
 
-Tout tourne en local dans un seul fichier : `suivi_candidatures.db`, créé à la
-racine du projet au premier lancement.
+1. [**Download the ZIP**](https://github.com/thmsgo18/azimut/archive/refs/heads/main.zip) and unzip it anywhere.
+2. Double-click **`Azimut.app`**.
+3. If macOS blocks the app the first time: right-click `Azimut.app` → *Open* (once only).
 
-Le code n'a pas d'étape de compilation : après toute modification, il suffit
-de relancer l'appli (ou de recharger la page) pour voir les changements.
+Either way, the app opens in its own window. On the very first launch, the Python environment and dependencies install themselves (one-time internet connection required) — this first start can take a minute or two, every launch after that is instant. Closing the window quits the app.
 
-## Partager l'appli à un ami
+If macOS blocks the app at first launch: right-click `Azimut.app` → *Open* (once). As a fallback, `Azimut (terminal).command` opens the same window from the Terminal with the install logs visible.
 
-Double-cliquer sur `Créer un zip à partager.command` : un zip est déposé sur
-le Bureau, **sans données personnelles** (ni base, ni exports, ni
-environnement Python). La personne dézippe, double-clique `Azimut.app`, et
-démarre avec sa propre base vierge, entièrement en local chez elle.
+Everything lives in a single local file: `suivi_candidatures.db`, created at the project root on first launch.
 
-## La ligne de commande
+There's no build step: after any code change, just relaunch the app (or reload the page) to see it.
 
-Toutes les fonctions restent pilotables en ligne de commande — pratique pour
-scripter, ou pour qu'une IA (Claude Code ou autre) tienne la base à jour sans
-ouvrir l'interface. `--help` fonctionne à chaque niveau.
+### Sharing a clean copy with a friend
+
+Double-click `Créer un zip à partager.command`: a zip is placed on your Desktop, **with no personal data** (no database, no exports, no Python environment). The recipient unzips it, double-clicks `Azimut.app`, and starts with their own blank database, entirely local on their machine.
+
+## Why not a spreadsheet
+
+A spreadsheet can track a handful of applications for a while. It stops working the moment you need history, reminders, or more than one linked table (companies, contacts, documents).
+
+| | Spreadsheet (Excel/Sheets) | Azimut |
+| :--- | :---: | :---: |
+| List applications, sort, filter | ✓ | ✓ |
+| Track a company and its contacts | 🟡 | ✓ |
+| Duplicate detection (same company, similar title, same job link) | ✗ | ✓ |
+| Automatic timeline per application (sent, follow-up, reply, interview) | ✗ | ✓ |
+| Reminders view: what to chase today, most urgent first | ✗ | ✓ |
+| Dead job-link detection | ✗ | ✓ |
+| Attach files (CV, cover letter, the offer as a PDF) per application | 🟡 | ✓ |
+| Calendar & Reminders.app integration | ✗ | ✓ |
+| Side-by-side comparison of open offers | 🟡 | ✓ |
+| Global search across everything (titles, notes, pasted job text) | ✗ | ✓ |
+| Opens with no software, one double-click | ✗ | ✓ |
+| Still exports to a readable `.xlsx` whenever you want one | ✓ | ✓ |
+| 100% local, nothing sent anywhere without asking | 🟡 | ✓ |
+
+<sub>✓ yes · 🟡 partial or requires manual upkeep · ✗ no. You keep the readable Excel export you're used to — Azimut just stops making you maintain it by hand.</sub>
+
+## Features
+
+**Application tracking**
+- **Kanban** pipeline (drag and drop to change status) or a filterable list, with a side panel to inspect, add, or delete.
+- **Automatic timeline** per application: creation, status change, follow-up, reply, interview scheduled — timestamped without lifting a finger.
+- **Attached documents**: CV, cover letter, the offer as a PDF, or any other file — attachable at creation or from the detail view, several at once.
+- **Interview prep sheet** and **interview mode** (the sheet on the left, a notes area on the right, auto-saved into the application).
+- **Recruitment portal access**: URL, username and password per application (masked in the interface, never exported).
+- **Follow-ups**: a dedicated view lists, most urgent first, every application due for a follow-up today or overdue — a single "Followed up" click logs the action (counter, status, timeline).
+- **Comparator**: check several applications in list view to line them up side by side (stipend, duration, work mode, dates…) to decide between multiple ongoing offers.
+- **Dead job-link detection**: a conservative HTTP check (run automatically every 6h while Azimut is open, or on demand) flags withdrawn postings (404/410) — often a sign a role has been filled — with no false positives on a mere network hiccup.
+- **Quick capture from Safari**: a macOS Shortcut sends the page (or selected text) to Azimut, which creates a draft to complete.
+
+**Organization**
+- **Companies** with context and news notes; detects probable duplicates ("Mistral" / "Mistral AI") and **merges them in one click**.
+- **Contacts** with an outreach status. Opening a company shows its contacts and its applications right there.
+- **Global search** (shortcut <kbd>⌘K</kbd>) across everything — titles, notes, job text, contacts — color-coded by result type.
+- **Near-duplicate detection** when creating an application (a similar title, or the same job link once tracking params are stripped): a simple warning, never a block.
+- **Read-only detail views**: clicking an application, a company, or a contact opens a clean, read-only sheet — links (the job posting, the portal, a company's website) are just clickable, nothing gets edited by accident. An explicit **Modify** button switches to the edit form.
+
+**Insights**
+- **Dashboard**: counts, breakdown by status and sub-domain, follow-ups due, upcoming interviews.
+- **Advanced statistics**: sent → replies → interviews → accepted funnel, average delays, response rate by source.
+- **Calendar** (month or 2-week view) connectable to a real calendar: a live `webcal://` subscription for Calendar (Mac), a "Add to Google Calendar" button per deadline, a universal `.ics` file, and every deadline can also become a dated reminder in the **Reminders** app (macOS), one at a time or all at once.
+- **Menu bar widget** (optional, `Azimut Widget.app`): today's follow-ups and the next interview at a glance, no need to open the window.
+
+**Data & privacy**
+- **Excel export / import**: a readable backup and restore, duplicates ignored and never overwritten, a detailed report after import.
+- **Automatic backup** of the database on every launch (rotated over the last 10).
+- **Configurable data folder**: choose where documents and backups live (handy to have them synced by iCloud Drive or Dropbox) — visible and updated live in Finder, like any other folder.
+- **Optional AI assistant**, with the key of any provider — see below.
+
+## Getting started
+
+A short walkthrough of the everyday flow:
+
+1. **Add an application** — click **+ Ajouter** from Candidatures (or **Nouvelle candidature** in the sidebar). Paste the job posting text into the AI box if you've configured a key, or just fill the form. The company is created automatically if it's new.
+2. **Move it through the pipeline** — drag a card between columns in the Kanban view to update its status, or edit it from its sheet.
+3. **Click anything to look, not to edit** — an application, a company, or a contact opens a clean read-only sheet: click the job link or the portal URL freely, nothing changes. Hit **Modifier** only when you actually want to edit.
+4. **Open a company to see who you know there** — its sheet lists its contacts and its applications, each one click away.
+5. **Check Relances every morning** — it's the single most useful daily habit: a prioritized list of what to chase today, one click to mark it done.
+6. **Search anything with ⌘K** — a title, a note, a phrase from a pasted job posting, a contact's name.
+7. **Prep for an interview** — open an application's sheet, click **Fiche entretien** for a printable Markdown summary, or **Mode entretien** for a split view with live notes.
+
+## Improvement ideas
+
+Ideas not implemented yet, roughly in order of how much they'd change day-to-day use:
+
+- **Visual charts in Statistiques** — the funnel and breakdowns are numbers today; an actual line chart (applications over time) or funnel graphic would read faster.
+- **Follow-up message drafts** — generate a short, personalized follow-up email draft (optionally via the AI assistant) straight from an application's sheet, ready to copy.
+- **Weekly goals** — a simple counter ("5 applications this week") with a visible progress indicator, to keep momentum during a search.
+- **Proactive macOS notifications** — a Notification Center alert when a link dies or right before a follow-up is due, without needing the window or even the menu bar widget open.
+- **Secrets in the macOS Keychain** — portal passwords and the AI API key currently sit in cleartext in the local database (by design, documented in `CLAUDE.md`); moving them to Keychain would remove that cleartext exposure entirely.
+- **A companion view for iPhone/iPad** — even read-only, to check today's follow-ups or an interview time without a Mac nearby (would need a sync story for the SQLite file, e.g. via iCloud Drive with a write lock).
+- **CSV import from LinkedIn/Indeed exports** — a bulk starting point when moving from a job board's own tracking to Azimut.
+
+Have another idea, or want one of these built? Open an issue.
+
+## The command line
+
+Every feature stays scriptable from the command line — handy to automate things, or to let an AI (Claude Code or otherwise) keep the database up to date without opening the interface. `--help` works at every level.
 
 ```bash
 ./suivi candidatures ajouter --entreprise "AgentikCo" --poste "Stage agents IA" --statut Envoyée --date-envoi 26/08/2026
@@ -148,9 +154,9 @@ ouvrir l'interface. `--help` fonctionne à chaque niveau.
 ```
 
 <details>
-<summary><strong>Détail des commandes</strong></summary>
+<summary><strong>Full command reference</strong></summary>
 
-### Candidatures
+### Applications (`candidatures`)
 
 ```bash
 python cli.py candidatures ajouter --entreprise "AgentikCo" --poste "Stage agents IA" --statut Envoyée --date-envoi 26/08/2026
@@ -158,44 +164,29 @@ python cli.py candidatures lister
 python cli.py candidatures lister --statut Entretien --priorite Haute
 python cli.py candidatures modifier 12 --statut "Réponse reçue" --date-reponse 02/09/2026
 python cli.py candidatures voir 12
-python cli.py candidatures relances               # relances à faire aujourd'hui ou en retard
-python cli.py candidatures relancer 12             # +1 relance, statut → Relancée, date effacée
+python cli.py candidatures relances               # follow-ups due today or overdue
+python cli.py candidatures relancer 12             # +1 follow-up, status → Relancée, date cleared
 ```
 
-Options d'ajout / modification : `--date-envoi`, `--sous-domaine`, `--lien-offre`,
-`--texte-offre` (texte intégral de l'offre, archivé si l'annonce disparaît),
-`--type`, `--priorite`, `--statut`, `--nb-relances`, `--date-relance-prevue`,
-`--date-reponse`, `--date-entretien`, `--date-debut-souhaitee`, `--duree`,
-`--gratification` (€/mois), `--ville`, `--mode-travail`, `--convention-envoyee`,
-`--source`, `--notes`, `--portail-url`, `--portail-identifiant`, `--portail-mdp`.
+Add/update options: `--date-envoi`, `--sous-domaine`, `--lien-offre`, `--texte-offre` (the full posting text, archived in case the listing disappears), `--type`, `--priorite`, `--statut`, `--nb-relances`, `--date-relance-prevue`, `--date-reponse`, `--date-entretien`, `--date-debut-souhaitee`, `--duree`, `--gratification` (€/month), `--ville`, `--mode-travail`, `--convention-envoyee`, `--source`, `--notes`, `--portail-url`, `--portail-identifiant`, `--portail-mdp`.
 
-Les dates s'écrivent `JJ/MM/AAAA` ou `AAAA-MM-JJ` (stockées en ISO).
+Dates are written `DD/MM/YYYY` or `YYYY-MM-DD` (stored as ISO).
 
-À l'ajout, si une candidature existante a un intitulé proche ou le même lien
-d'offre, un avertissement `⚠` (non bloquant) s'affiche avant la confirmation —
-utile pour repérer une offre repostée ou une faute de frappe sans jamais
-empêcher une vraie nouvelle candidature d'être créée.
+On add, if an existing application has a similar title or the same job link, a non-blocking `⚠` warning shows before confirmation — useful to spot a reposted listing or a typo without ever preventing a genuinely new application from being created.
 
-### Entreprises
+### Companies (`entreprises`)
 
 ```bash
 python cli.py entreprises ajouter --nom "AgentikCo" --site-web https://agentik.co
 python cli.py entreprises lister
-python cli.py entreprises modifier 3 --contexte-actus "Série A en 2026, équipe agents de 12 personnes."
-python cli.py entreprises doublons                    # paires probablement en double
-python cli.py entreprises fusionner 2 5               # garde n°2, fusionne n°5 dedans
+python cli.py entreprises modifier 3 --contexte-actus "Series A in 2026, 12-person agents team."
+python cli.py entreprises doublons                    # probable duplicate pairs
+python cli.py entreprises fusionner 2 5               # keeps #2, merges #5 into it
 ```
 
-`ajouter` ne crée jamais de doublon : si le nom existe déjà (comparaison
-insensible à la casse et aux accents), l'entreprise existante est retrouvée et
-seuls ses champs vides sont complétés. Si une valeur existante diffère, rien
-n'est écrasé : une erreur `ConflitMiseAJour` l'explique — c'est `modifier` qui
-écrase, explicitement.
+`ajouter` never creates a duplicate: if the name already exists (case- and accent-insensitive comparison), the existing company is found and only its empty fields are filled in. If an existing value differs, nothing is overwritten: a `ConflitMiseAJour` error explains why — `modifier` is what overwrites, explicitly.
 
-`doublons` liste les paires au nom proche sans rien modifier ; `fusionner
-<conserver> <supprimer>` déplace candidatures et contacts vers la première,
-complète ses champs vides depuis la seconde, puis la supprime — irréversible,
-à utiliser après avoir vérifié la paire.
+`doublons` lists close-name pairs without changing anything; `fusionner <keep> <remove>` moves applications and contacts to the first, fills its empty fields from the second, then deletes it — irreversible, use it after checking the pair.
 
 ### Contacts
 
@@ -205,104 +196,62 @@ python cli.py contacts lister --entreprise "AgentikCo"
 python cli.py contacts modifier 5 --statut Contacté --date-contact 27/08/2026
 ```
 
-### Export / import Excel
+### Excel export / import
 
 ```bash
 python cli.py export excel --sortie suivi_candidatures.xlsx
 python cli.py import excel --fichier suivi_candidatures.xlsx
 ```
 
-L'export régénère le fichier complet depuis la base : 4 onglets (« Suivi
-candidatures », « Entreprises », « Contacts », « Tableau de bord »), listes
-déroulantes sur les colonnes à valeurs autorisées, couleurs conditionnelles
-sur Statut et Priorité, liens `HYPERLINK` + `MATCH` entre onglets, compteurs
-par formules (`COUNTIF`/`COUNTA`, aucune valeur codée en dur). Relançable à
-tout moment sans perte.
+The export regenerates the full file from the database: 4 sheets ("Suivi candidatures", "Entreprises", "Contacts", "Tableau de bord"), dropdowns on columns with allowed values, conditional colors on Status and Priority, `HYPERLINK` + `MATCH` links between sheets, formula-driven counters (`COUNTIF`/`COUNTA`, no hard-coded value). Rerun it anytime with no data loss.
 
-L'import relit un tel fichier et réinjecte les données : les doublons sont
-ignorés et signalés, les lignes invalides sont rapportées avec leur numéro
-sans bloquer le reste — pratique comme sauvegarde lisible ou pour fusionner
-deux bases.
+The import re-reads such a file and re-injects the data: duplicates are skipped and reported, invalid rows are reported with their row number without blocking the rest — handy as a readable backup, or to merge two databases.
 
-**La sauvegarde intégrale**, c'est une copie du fichier `suivi_candidatures.db`
-— l'Excel ne contient ni les mots de passe de portail, ni la clé API : ceux-ci
-restent en clair dans la base locale, qui ne quitte jamais la machine.
+**The full backup** is simply a copy of the `suivi_candidatures.db` file — the Excel export contains neither portal passwords nor the API key: those stay in cleartext only in the local database, which never leaves the machine.
 
-### Fiche de préparation d'entretien
+### Interview prep sheet
 
 ```bash
-python cli.py entretien preparer 12                    # affiche dans le terminal
-python cli.py entretien preparer 12 --sortie fiche.md  # enregistre en Markdown
+python cli.py entretien preparer 12                    # prints to the terminal
+python cli.py entretien preparer 12 --sortie fiche.md  # saves as Markdown
 ```
 
-Compile en une fiche : en-tête (entreprise, poste, date, lieu/mode), contexte
-entreprise, texte ou lien de l'offre, contacts identifiés, historique (envoi,
-relances, notes, journal complet).
+Compiles a sheet: header (company, role, date, location/mode), company context, the posting's text or link, identified contacts, full history (sent date, follow-ups, notes, complete timeline).
 
 </details>
 
-## Assistant IA — n'importe quel fournisseur
+## AI assistant — any provider
 
-Dans **Réglages**, une clé API active un formulaire « Nouvelle candidature »
-qui se pré-remplit en collant le texte d'une offre : l'IA extrait poste,
-ville, gratification, sous-domaine…, et propose un contexte entreprise
-(recherche web). Rien n'est jamais écrit sans relecture et validation.
+In **Réglages** (Settings), an API key unlocks a "New application" form that pre-fills itself when you paste a job posting's text: the AI extracts the role, city, stipend, sub-domain…, and proposes company context (web search). Nothing is ever written without you reviewing and confirming it.
 
-Deux fournisseurs :
+Two providers:
 
-| Fournisseur | Ce qu'il faut | Particularité |
+| Provider | What you need | Specific to it |
 |---|---|---|
-| **Anthropic** (Claude) | Une clé sur [console.anthropic.com](https://console.anthropic.com) | Recherche web intégrée pour le contexte entreprise |
-| **Compatible OpenAI** | Une clé + un nom de modèle, éventuellement une URL de base | Couvre OpenAI, Mistral, Groq, DeepSeek, Google Gemini (endpoint compatible), OpenRouter, ou un modèle local (Ollama, LM Studio…) |
+| **Anthropic** (Claude) | A key from [console.anthropic.com](https://console.anthropic.com) | Built-in web search for company context |
+| **OpenAI-compatible** | A key + a model name, optionally a base URL | Covers OpenAI, Mistral, Groq, DeepSeek, Google Gemini (compatible endpoint), OpenRouter, or a local model (Ollama, LM Studio…) |
 
-La deuxième option est la voie générique : **toute IA qui parle le protocole
-OpenAI fonctionne**, y compris un modèle tournant en local sur ta machine,
-sans qu'aucune donnée ne parte alors chez un tiers.
+The second option is the generic path: **any AI speaking the OpenAI protocol works**, including a model running locally on your own machine, with no data ever leaving to a third party.
 
-Cette couche ne fait que proposer — jamais d'écriture directe en base, jamais
-d'information inventée (un champ absent de l'offre reste vide).
+This layer only proposes — never a direct database write, never a made-up value (a field missing from the posting stays empty).
 
-**Sans clé du tout**, Azimut reste entièrement fonctionnel : une IA de type
-Claude Code peut piloter la base directement via la ligne de commande ou les
-fonctions Python documentées dans [`CLAUDE.md`](CLAUDE.md), sur ton abonnement
-existant, sans clé API séparée.
+**With no key at all**, Azimut stays fully functional: a Claude-Code-style AI can drive the database directly through the command line or the Python functions documented in [`CLAUDE.md`](CLAUDE.md), on your existing subscription, with no separate API key.
 
-## Automatisations macOS
+## macOS automations
 
-**App Rappels.** En plus du calendrier, le bouton **R** à côté de chaque
-échéance (agenda) crée un rappel daté dans l'app Rappels ; un bouton dans
-« Connecter un calendrier » les envoie toutes d'un coup. La toute première
-fois, macOS demande d'autoriser Azimut à automatiser Rappels (Réglages Système
-→ Confidentialité et sécurité → Automatisation) — à accorder une fois.
+**Reminders app.** Besides the calendar, the **R** button next to any deadline (Agenda) creates a dated reminder in the Reminders app; a button in "Connect a calendar" sends them all at once. The very first time, macOS asks to authorize Azimut to automate Reminders (System Settings → Privacy & Security → Automation) — grant it once.
 
-**Liens d'offres morts.** Un ping HTTP conservateur (HEAD, puis GET si
-nécessaire) tourne toutes les 6h en arrière-plan pendant qu'Azimut est ouvert,
-et à la demande depuis **Statistiques** (bouton « Vérifier maintenant »). Seul
-un code 404/410 sans ambiguïté marque un lien « mort » ; un délai dépassé, une
-erreur 5xx ou un blocage anti-robot (403) restent « inconnu » — jamais de
-faux positif. Rien n'est déduit du contenu de la page, seulement du code HTTP.
+**Dead job links.** A conservative HTTP check (HEAD, then GET if needed) runs every 6h in the background while Azimut is open, and on demand from **Statistiques** ("Check now"). Only an unambiguous 404/410 marks a link "dead"; a timeout, a 5xx error, or an anti-bot block (403) stay "unknown" — never a false positive. Nothing is inferred from page content, only the HTTP status.
 
-**Capture rapide (Raccourci Safari).** Voir la carte « Capture rapide depuis
-Safari » dans Réglages pour construire le Raccourci macOS (4 blocs) qui envoie
-la page ou le texte sélectionné vers Azimut. La candidature créée est un
-brouillon (statut « À préparer », note d'origine) à relire et compléter —
-jamais une candidature pleinement renseignée sans passage par l'interface.
-Azimut doit être ouvert pour la recevoir (c'est un appel à son serveur local).
+**Quick capture (Safari Shortcut).** See the "Quick capture from Safari" card in Réglages to build the 4-step macOS Shortcut that sends the page or selected text to Azimut. The application created is a draft (status "À préparer", an origin note) to review and complete — never a fully-filled application without a pass through the interface. Azimut must be open to receive it (it's a call to its local server).
 
-**Widget de barre de menus.** Double-cliquer sur `Azimut Widget.app` : une
-icône dans la barre de menus (pas dans le Dock) affiche le nombre de relances
-du jour et le prochain entretien, avec un raccourci pour ouvrir l'appli
-complète. Lit la base directement, fonctionne même si la fenêtre principale
-est fermée. Peut être ajouté aux éléments de connexion (Réglages Système →
-Général → Ouverture) pour démarrer automatiquement.
+**Menu bar widget.** Double-click `Azimut Widget.app`: an icon in the menu bar (not the Dock) shows today's follow-up count and the next interview, with a shortcut to open the full app. Reads the database directly, works even if the main window is closed. Can be added to Login Items (System Settings → General → Login Items) to start automatically.
 
-## Règles appliquées par le code (pas seulement documentées)
+## Rules enforced by the code (not just documented)
 
-Toute valeur hors liste est refusée avec un message clair listant les valeurs
-possibles (voir `valeurs.py`). La casse et les accents sont tolérés en entrée
-(`envoyee` → `Envoyée`).
+Any out-of-list value is rejected with a clear message listing what's allowed (see `valeurs.py`). Case and accents are tolerated on input (`envoyee` → `Envoyée`).
 
-| Champ | Valeurs |
+| Field | Values |
 |---|---|
 | `sous_domaine` | Agents de codage, Orchestration multi-agents, RAG / Agents de recherche, Agents conversationnels, Robotique / Agents physiques, MLOps pour agents, Autre |
 | `type_candidature` | Offre publiée, Candidature spontanée, Cooptation / Réseau |
@@ -310,109 +259,98 @@ possibles (voir `valeurs.py`). La casse et les accents sont tolérés en entrée
 | `statut` | À préparer, Envoyée, Relancée, Réponse reçue, Entretien, Refus, Accepté |
 | `mode_travail` | Présentiel, Hybride, Full remote |
 | `convention_envoyee` | Oui, Non, N/A |
-| `source` (candidature) | LinkedIn, Indeed, Site entreprise, Welcome to the Jungle, Réseau, Forum / Salon, Autre |
+| `source` (application) | LinkedIn, Indeed, Site entreprise, Welcome to the Jungle, Réseau, Forum / Salon, Autre |
 | `type_contact` | Email, LinkedIn, Téléphone, Autre |
 | `statut_contact` | À contacter, Contacté, Répondu, Pas de réponse |
 | `source` (contact) | Site entreprise, Article / Presse, LinkedIn (recherche publique), Réseau, Autre |
 | `type_document` | CV, Lettre de motivation, Offre (PDF), Portfolio, Autre |
 
-- **Doublons exacts** : une candidature = (entreprise, poste) unique ; un
-  contact = (entreprise, nom) unique ; une entreprise = nom unique — toujours
-  en comparaison insensible à la casse et aux accents. Refusés net, avec le
-  numéro de la ligne existante.
-- **Quasi-doublons** (intitulé proche, même lien d'offre) : signalés, jamais
-  bloqués — voir `doublons.py`.
-- **Dates** : validées (le 31 février est refusé) et stockées en ISO
-  `AAAA-MM-JJ`, affichées `JJ/MM/AAAA`.
+- **Exact duplicates**: an application = unique (company, role); a contact = unique (company, name); a company = unique name — always compared case- and accent-insensitively. Rejected outright, with the existing row's number.
+- **Near-duplicates** (similar title, same job link): flagged, never blocked — see `doublons.py`.
+- **Dates**: validated (February 31st is rejected) and stored as ISO `YYYY-MM-DD`, displayed `DD/MM/YYYY`.
 
-## API pour une IA (Claude Code ou autre)
+## API for an AI (Claude Code or other)
 
-Aucune écriture SQL directe : toujours passer par ces fonctions, qui valident
-les valeurs et gèrent les doublons. Toutes acceptent `chemin_db=` (défaut :
-`suivi_candidatures.db` à la racine). Documentation complète et à jour dans
-[`CLAUDE.md`](CLAUDE.md).
+No direct SQL: always go through these functions, which validate values and handle duplicates. All of them accept `chemin_db=` (default: `suivi_candidatures.db` at the project root). Full, up-to-date reference in [`CLAUDE.md`](CLAUDE.md).
 
 ```python
 # entreprises.py
 ajouter_ou_recuperer_entreprise(nom, site_web=None, contexte_actus=None) -> id
 modifier_entreprise(id, **champs)
-supprimer_entreprise(id)                                # refusé si liens existants
-fusionner_entreprises(id_conserver, id_supprimer) -> résumé
-lister_entreprises() -> liste de dicts
+supprimer_entreprise(id)                                # refused if linked rows exist
+fusionner_entreprises(id_conserver, id_supprimer) -> summary
+lister_entreprises() -> list of dicts
 
 # candidatures.py
-verifier_doublon_candidature(entreprise_nom, poste) -> id ou None
-ajouter_candidature(entreprise_nom, poste, **champs) -> id     # DoublonCandidature si doublon
+verifier_doublon_candidature(entreprise_nom, poste) -> id or None
+ajouter_candidature(entreprise_nom, poste, **champs) -> id     # DoublonCandidature if duplicate
 modifier_candidature(id, **champs)
-lister_candidatures(statut=None, sous_domaine=None, priorite=None) -> liste de dicts
+lister_candidatures(statut=None, sous_domaine=None, priorite=None) -> list of dicts
 recuperer_candidature(id) -> dict
 
 # contacts.py
-verifier_doublon_contact(entreprise_nom, nom_contact) -> id ou None
-ajouter_contact(entreprise_nom, nom, **champs) -> id           # DoublonContact si doublon
+verifier_doublon_contact(entreprise_nom, nom_contact) -> id or None
+ajouter_contact(entreprise_nom, nom, **champs) -> id           # DoublonContact if duplicate
 modifier_contact(id, **champs)
-lister_contacts(entreprise_nom=None) -> liste de dicts
+lister_contacts(entreprise_nom=None) -> list of dicts
 
-# doublons.py — quasi-doublons (avertissement, jamais un blocage)
+# doublons.py — near-duplicates (a warning, never a block)
 candidatures_similaires(entreprise, poste, lien_offre=None) -> [{id, score, raisons}, ...]
 paires_entreprises_suspectes() -> [{a, b, score}, ...]
 
-# documents.py — fichiers joints (CV, lettres, offres en PDF…)
+# documents.py — attached files (CV, cover letters, offers as PDF…)
 ajouter_document(candidature_id, nom_fichier, contenu_bytes, type_document=None) -> id
 lister_documents(candidature_id=None) / supprimer_document(id)
 
 # export_excel.py / import_excel.py
-exporter_excel(chemin_sortie) -> chemin du fichier généré
-importer_excel(chemin_fichier) -> rapport (ajouts, doublons ignorés, erreurs)
+exporter_excel(chemin_sortie) -> path of the generated file
+importer_excel(chemin_fichier) -> report (added, duplicates skipped, errors)
 
 # entretien.py / recherche.py / statistiques.py / agenda.py
-generer_fiche_entretien(candidature_id) -> texte Markdown
+generer_fiche_entretien(candidature_id) -> Markdown text
 rechercher(texte) / stats_avancees() / lister_echeances()
 ```
 
-Exceptions (voir `exceptions.py`) : `ValeurNonAutorisee`, `ChampInconnu`,
-`DoublonCandidature`, `DoublonContact`, `DoublonEntreprise`, `ConflitMiseAJour`,
-`EntiteIntrouvable` — toutes héritent de `ErreurSuivi` et portent un message en
-français.
+Exceptions (see `exceptions.py`): `ValeurNonAutorisee`, `ChampInconnu`, `DoublonCandidature`, `DoublonContact`, `DoublonEntreprise`, `ConflitMiseAJour`, `EntiteIntrouvable` — all inherit from `ErreurSuivi` and carry a French message.
 
-## Structure du projet
+## Project structure
 
 ```
 azimut/
-  Azimut.app                        # double-clic : l'application (fenêtre native)
-  Azimut Widget.app                 # double-clic : widget de barre de menus (optionnel)
-  Azimut (terminal).command         # secours : même fenêtre, depuis le Terminal
-  Créer un zip à partager.command   # double-clic : zip (sans données) sur le Bureau
-  app_bureau.py     # fenêtre native (pywebview) autour du serveur interne
-  menu_barre.py     # widget de barre de menus (rumps) : relances, prochain entretien
-  serveur.py        # serveur interne (Flask) : API JSON + interface
+  Azimut.app                        # double-click: the app (native window)
+  Azimut Widget.app                 # double-click: menu bar widget (optional)
+  Azimut (terminal).command         # fallback: same window, from the Terminal
+  Créer un zip à partager.command   # double-click: a zip (no personal data) on the Desktop
+  app_bureau.py     # native window (pywebview) wrapping the internal server
+  menu_barre.py     # menu bar widget (rumps): follow-ups, next interview
+  serveur.py        # internal server (Flask): JSON API + interface
   static/           # interface (index.html, style.css, app.js)
-  db.py             # connexion SQLite, création des tables, migrations
-  valeurs.py        # valeurs autorisées + validation des champs
-  exceptions.py     # exceptions métier (messages en français)
-  entreprises.py    # CRUD entreprises (anti-doublon, conflits, fusion)
-  candidatures.py   # CRUD candidatures (anti-doublon), relances
-  contacts.py       # CRUD contacts (anti-doublon)
-  doublons.py       # quasi-doublons : intitulés proches, lien d'offre, fusion
-  verification_liens.py  # détection des liens d'offres morts (ping conservateur)
-  rappels_macos.py  # pousse des échéances vers l'app Rappels (AppleScript)
-  rapide.py         # capture rapide (brouillon depuis un Raccourci macOS)
-  export_excel.py   # export .xlsx (4 onglets, style du fichier d'origine)
-  import_excel.py   # import d'un export .xlsx (sauvegarde / restauration)
-  evenements.py     # journal automatique des candidatures (timeline)
-  documents.py      # fichiers joints (dossier configurable)
-  recherche.py      # recherche globale multi-types
-  statistiques.py   # entonnoir, délais, sources
-  agenda.py         # échéances + export iCalendar (.ics)
-  reglages.py       # réglages locaux (clé API masquée, fournisseur IA, dossier de données)
-  sauvegarde.py     # copies datées de la base, rotation
-  agent.py          # analyse d'offres — Anthropic ou tout fournisseur compatible OpenAI
-  entretien.py      # fiche de préparation d'entretien (Markdown)
-  cli.py            # interface en ligne de commande
-  CLAUDE.md         # mode d'emploi du projet pour les IA (Claude Code…)
-  suivi             # exécutable terminal (équivalent de python cli.py)
+  db.py             # SQLite connection, table creation, migrations
+  valeurs.py        # allowed values + field validation
+  exceptions.py     # business exceptions (French messages)
+  entreprises.py    # company CRUD (anti-duplicate, conflicts, merge)
+  candidatures.py   # application CRUD (anti-duplicate), follow-ups
+  contacts.py       # contact CRUD (anti-duplicate)
+  doublons.py       # near-duplicates: close titles, job link, merge
+  verification_liens.py  # dead job-link detection (conservative check)
+  rappels_macos.py  # pushes deadlines to the Reminders app (AppleScript)
+  rapide.py         # quick capture (draft from a macOS Shortcut)
+  export_excel.py   # .xlsx export (4 sheets, matches the original file's style)
+  import_excel.py   # import of such an export (backup / restore)
+  evenements.py     # automatic application timeline
+  documents.py      # attached files (configurable folder)
+  recherche.py      # multi-type global search
+  statistiques.py   # funnel, delays, sources
+  agenda.py         # deadlines + iCalendar export (.ics)
+  reglages.py       # local settings (masked API key, AI provider, data folder)
+  sauvegarde.py      # dated copies of the database, rotation
+  agent.py          # posting analysis — Anthropic or any OpenAI-compatible provider
+  entretien.py      # interview prep sheet (Markdown)
+  cli.py            # command-line interface
+  CLAUDE.md         # how the project works, for AIs (Claude Code…)
+  suivi             # terminal executable (equivalent of python cli.py)
   tests/            # 202 tests — python -m unittest discover -s tests
-  suivi_candidatures.db   # la base — seule source de vérité (non versionnée)
+  suivi_candidatures.db   # the database — sole source of truth (not versioned)
 ```
 
 ## Tests
@@ -421,6 +359,6 @@ azimut/
 ./venv/bin/python -m unittest discover -s tests
 ```
 
-## Licence
+## License
 
-[MIT](LICENSE) — projet personnel, ouvert et librement réutilisable.
+[MIT](LICENSE) — personal project, open and freely reusable.
