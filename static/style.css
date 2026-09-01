@@ -347,6 +347,21 @@ label { font-size: 12.5px; font-weight: 550; color: var(--encre-2); }
 
 @media (max-width: 980px) { .grille-bord { grid-template-columns: 1fr; } }
 
+/* Grille en colonnes façon "maçonnerie" : les cartes de Réglages ont des
+   hauteurs très inégales, une grille classique laisserait de grands vides
+   sous les cartes courtes. */
+.grille-reglages {
+  column-count: 2;
+  column-gap: 14px;
+}
+
+.grille-reglages .carte {
+  break-inside: avoid;
+  margin-bottom: 14px;
+}
+
+@media (max-width: 980px) { .grille-reglages { column-count: 1; } }
+
 .carte {
   background: var(--surface);
   border: 1px solid var(--hairline);
@@ -670,7 +685,8 @@ label { font-size: 12.5px; font-weight: 550; color: var(--encre-2); }
 
 .carte-entreprise .compteurs {
   display: flex;
-  gap: 8px;
+  flex-wrap: wrap;
+  gap: 6px 8px;
   font-size: 12px;
   color: var(--encre-3);
 }
@@ -720,6 +736,7 @@ label { font-size: 12.5px; font-weight: 550; color: var(--encre-2); }
 
 .panneau-pied {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   padding: 14px 22px;
   border-top: 1px solid var(--hairline);
@@ -776,6 +793,7 @@ label { font-size: 12.5px; font-weight: 550; color: var(--encre-2); }
 
 .modale-pied {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   justify-content: flex-end;
   padding: 12px 20px 16px;

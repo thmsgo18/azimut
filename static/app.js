@@ -2155,7 +2155,7 @@ async function vueReglages() {
     <div class="entete-vue">
       <div><h1>${t("nav.reglages")}</h1><div class="sous-titre">${t("reglages.sous_titre")}</div></div>
     </div>
-    <div class="grille-bord">
+    <div class="grille-reglages">
       <div class="carte">
         <h2>${t("reglages.langue_titre")}</h2>
         <p class="sous-titre">${t("reglages.langue_texte")}</p>
